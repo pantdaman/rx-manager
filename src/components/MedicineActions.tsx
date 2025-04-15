@@ -23,6 +23,29 @@ interface DrugInfo {
   source?: 'FDA' | 'LLM' | 'Mock';
 }
 
+interface Medicine {
+  name: string;
+  dosage: string;
+  duration: string;
+  confidence: number;
+  frequency?: string;
+  alternatives: Array<{
+    name: string;
+    description: string;
+    price: number;
+  }>;
+  manufacturer: string;
+  category: string;
+  description: string;
+}
+
+interface StoreLocation {
+  name: string;
+  distance: string;
+  address: string;
+  phone: string;
+}
+
 export default function MedicineActions({ 
   name, 
   dosage, 
@@ -31,7 +54,7 @@ export default function MedicineActions({
   frequency 
 }: MedicineActionsProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<StoreLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pinCode, setPinCode] = useState<string>('');
@@ -45,6 +68,9 @@ export default function MedicineActions({
   const itemsPerPage = 5;
   const [currentStorePage, setCurrentStorePage] = useState(1);
   const storesPerPage = 10;
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [pincode, setPincode] = useState('');
+  const [activeTab, setActiveTab] = useState<'alternatives' | 'details'>('alternatives');
 
   useEffect(() => {
     if (selectedAction === 'stores' && pinCode.length === 6) {
@@ -297,74 +323,74 @@ export default function MedicineActions({
   };
 
   const renderStoreDetails = (store: any) => (
-    <div key={store.storeId} className="p-4 border-b hover:bg-gray-50 transition-colors">
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex-1">
-          <div className="flex items-start gap-2">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">{store.storeName}</h3>
-              <p className="text-sm text-gray-600 mt-1">{store.storeContactPerson}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">
-                {parseFloat(store.distanceFromUser).toFixed(1)} km away
-              </div>
-            </div>
+    <details key={store.storeId} className="group">
+      <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900">{store.storeName}</h3>
+            <p className="text-sm text-gray-600 mt-1">{store.storeContactPerson}</p>
           </div>
-
-          <div className="mt-3 space-y-2">
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 mt-0.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <div className="text-sm text-gray-600">
-                <div>{store.address}</div>
-                <div className="mt-1 text-gray-500">
-                  {store.district}, {store.state} - {store.pincode}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 pt-2">
-              <a 
-                href={`tel:${store.mobileNo}`}
-                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                {store.mobileNo}
-              </a>
-
-              {store.emailId && (
-                <a 
-                  href={`mailto:${store.emailId}`}
-                  className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  {store.emailId}
-                </a>
-              )}
-
-              <a
-                href={`https://www.google.com/maps?q=${store.storeLatitude},${store.storeLongitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                View on Map
-              </a>
+          <div className="text-right">
+            <div className="text-sm font-medium text-gray-900">
+              {parseFloat(store.distanceFromUser).toFixed(1)} km away
             </div>
           </div>
         </div>
+        <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </summary>
+      <div className="px-4 pb-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <svg className="w-4 h-4 mt-0.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <div className="text-sm text-gray-600">
+            <div>{store.address}</div>
+            <div className="mt-1 text-gray-500">
+              {store.district}, {store.state} - {store.pincode}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 pt-2">
+          <a 
+            href={`tel:${store.mobileNo}`}
+            className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            {store.mobileNo}
+          </a>
+
+          {store.emailId && (
+            <a 
+              href={`mailto:${store.emailId}`}
+              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {store.emailId}
+            </a>
+          )}
+
+          <a
+            href={`https://www.google.com/maps?q=${store.storeLatitude},${store.storeLongitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            View on Map
+          </a>
+        </div>
       </div>
-    </div>
+    </details>
   );
 
   const renderStores = () => {
@@ -655,6 +681,14 @@ export default function MedicineActions({
     }
   };
 
+  const handleUploadClick = () => {
+    // Handle prescription upload
+  };
+
+  const handleSearchStores = () => {
+    // Handle store search
+  };
+
   return (
     <div className="w-full bg-white p-4 rounded-lg shadow-sm border">
       <div className="flex flex-col gap-3">
@@ -683,43 +717,43 @@ export default function MedicineActions({
             <span className="text-gray-900">{duration}</span>
           </div>
         </div>
-      </div>
 
-      <div className="flex mt-3 border rounded-lg overflow-hidden">
-        <button
-          onClick={() => setSelectedAction(selectedAction === 'alternatives' ? null : 'alternatives')}
-          className={`flex-1 px-3 py-2 text-sm font-medium ${
-            selectedAction === 'alternatives'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Alternatives
-        </button>
-        <button
-          onClick={() => setSelectedAction(selectedAction === 'stores' ? null : 'stores')}
-          className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
-            selectedAction === 'stores'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Stores
-        </button>
-        <button
-          onClick={() => setSelectedAction(selectedAction === 'details' ? null : 'details')}
-          className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
-            selectedAction === 'details'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Details
-        </button>
-      </div>
+        <div className="flex mt-3 border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setSelectedAction(selectedAction === 'alternatives' ? null : 'alternatives')}
+            className={`flex-1 px-3 py-2 text-sm font-medium ${
+              selectedAction === 'alternatives'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Alternatives
+          </button>
+          <button
+            onClick={() => setSelectedAction(selectedAction === 'stores' ? null : 'stores')}
+            className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
+              selectedAction === 'stores'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Stores
+          </button>
+          <button
+            onClick={() => setSelectedAction(selectedAction === 'details' ? null : 'details')}
+            className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
+              selectedAction === 'details'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Details
+          </button>
+        </div>
 
-      <div className="mt-3">
-        {renderActionDetails()}
+        <div className="mt-3">
+          {renderActionDetails()}
+        </div>
       </div>
     </div>
   );
