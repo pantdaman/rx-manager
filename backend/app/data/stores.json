@@ -1,0 +1,44 @@
+[
+  {
+    "sr_no": "1",
+    "kendra_code": "KEN001",
+    "name": "Jan Aushadhi Kendra - City Hospital",
+    "address": "123 Main Street",
+    "district": "Central District",
+    "state": "Maharashtra",
+    "pin_code": "400001",
+    "contact": "+91 9876543210",
+    "status": "Active",
+    "working_hours": "9:00 AM - 9:00 PM",
+    "latitude": "19.0760",
+    "longitude": "72.8777"
+  },
+  {
+    "sr_no": "2",
+    "kendra_code": "KEN002", 
+    "name": "Jan Aushadhi Kendra - Community Center",
+    "address": "45 Park Road",
+    "district": "Western District",
+    "state": "Maharashtra",
+    "pin_code": "400002",
+    "contact": "+91 9876543211",
+    "status": "Active",
+    "working_hours": "8:00 AM - 8:00 PM",
+    "latitude": "19.0825",
+    "longitude": "72.8900"
+  },
+  {
+    "sr_no": "3",
+    "kendra_code": "KEN003",
+    "name": "Jan Aushadhi Kendra - Railway Station",
+    "address": "789 Station Road",
+    "district": "Eastern District",
+    "state": "Maharashtra",
+    "pin_code": "400003",
+    "contact": "+91 9876543212",
+    "status": "Active",
+    "working_hours": "24 Hours",
+    "latitude": "19.0650",
+    "longitude": "72.8950"
+  }
+] 
