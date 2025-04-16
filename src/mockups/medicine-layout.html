@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RX Manager - Layout Mockup</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #f3f4f6;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f9fafb;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        /* Header Section */
+        .header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .upload-btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* Medicine Cards */
+        .medicine-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .medicine-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .medicine-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .medicine-meta {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .confidence-badge {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .medicine-content {
+            padding: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* Store Locator */
+        .store-locator {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .store-search {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .store-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        .store-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .store-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .store-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Mock Content */
+        .mock-content {
+            background-color: var(--secondary-color);
+            padding: 16px;
+            border-radius: 6px;
+            min-height: 200px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .store-locator {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <div class="upload-section">
+                <button class="upload-btn">Upload Prescription</button>
+                <span>or drag and drop your prescription here</span>
+            </div>
+        </div>
+
+        <!-- Left Column - Medicines -->
+        <div class="medicines-column">
+            <!-- Medicine Cards -->
+            <div class="medicine-card">
+                <div class="medicine-header">
+                    <div>
+                        <div class="medicine-name">Medicine Name</div>
+                        <div class="medicine-meta">
+                            <span>Dosage: 500mg</span>
+                            <span>Duration: 7 days</span>
+                        </div>
+                    </div>
+                    <div class="confidence-badge">95%</div>
+                </div>
+                <div class="medicine-content">
+                    <div class="tabs">
+                        <div class="tab active">Alternatives</div>
+                        <div class="tab">Details</div>
+                    </div>
+                    <div class="mock-content">
+                        <!-- Mock content for alternatives/details -->
+                        Alternative medicines and details will appear here
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Medicine Card -->
+            <div class="medicine-card">
+                <div class="medicine-header">
+                    <div>
+                        <div class="medicine-name">Another Medicine</div>
+                        <div class="medicine-meta">
+                            <span>Dosage: 250mg</span>
+                            <span>Duration: 14 days</span>
+                        </div>
+                    </div>
+                    <div class="confidence-badge">88%</div>
+                </div>
+                <div class="medicine-content">
+                    <div class="tabs">
+                        <div class="tab active">Alternatives</div>
+                        <div class="tab">Details</div>
+                    </div>
+                    <div class="mock-content">
+                        <!-- Mock content for alternatives/details -->
+                        Alternative medicines and details will appear here
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Store Locator -->
+        <div class="store-locator">
+            <h3 style="margin-bottom: 16px;">Find Nearby Stores</h3>
+            <div class="store-search">
+                <input type="text" class="store-input" placeholder="Enter PIN code">
+                <button class="upload-btn">Search</button>
+            </div>
+            <div class="store-list">
+                <div class="store-item">
+                    <div style="font-weight: 500;">Store Name</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">2.5 km away</div>
+                </div>
+                <div class="store-item">
+                    <div style="font-weight: 500;">Another Store</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">3.1 km away</div>
+                </div>
+                <div class="store-item">
+                    <div style="font-weight: 500;">Pharmacy Plus</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">4.2 km away</div>
+                </div>
+                <div class="store-item">
+                    <div style="font-weight: 500;">MediCare</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">5.0 km away</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

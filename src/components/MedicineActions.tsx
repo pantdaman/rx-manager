@@ -9,6 +9,7 @@ interface MedicineActionsProps {
   duration: string;
   confidence?: number;
   frequency?: string;
+  showStoreLocator?: boolean;
 }
 
 interface DrugInfo {
@@ -40,10 +41,22 @@ interface Medicine {
 }
 
 interface StoreLocation {
-  name: string;
-  distance: string;
+  storeId: string;
+  storeName: string;
+  storeContactPerson: string;
   address: string;
-  phone: string;
+  district: string;
+  state: string;
+  pincode: string;
+  distanceFromUser: string;
+  mobileNo: string;
+  emailId?: string;
+  storeLatitude: string;
+  storeLongitude: string;
+}
+
+interface Action {
+  type: 'search' | 'store' | 'details' | 'alternatives' | 'stores' | null;
 }
 
 export default function MedicineActions({ 
@@ -51,9 +64,10 @@ export default function MedicineActions({
   dosage, 
   duration, 
   confidence, 
-  frequency 
+  frequency, 
+  showStoreLocator 
 }: MedicineActionsProps) {
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = useState<'search' | 'store' | 'details' | 'alternatives' | 'stores' | null>(null);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,10 +85,20 @@ export default function MedicineActions({
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [pincode, setPincode] = useState('');
   const [activeTab, setActiveTab] = useState<'alternatives' | 'details'>('alternatives');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<MedicineSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchingStores, setIsSearchingStores] = useState(false);
+  const [storeError, setStoreError] = useState<string | null>(null);
+  const [loadingStores, setLoadingStores] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
 
   useEffect(() => {
+    console.log('useEffect triggered:', { selectedAction, pinCode, name });
     if (selectedAction === 'stores' && pinCode.length === 6) {
-      fetchStores();
+      console.log('useEffect calling fetchStores');
+      fetchStores(pinCode);
     } else if (selectedAction === 'details' && name) {
       fetchDrugInfo();
     } else if (selectedAction === 'alternatives' && name) {
@@ -183,76 +207,72 @@ export default function MedicineActions({
     }
   };
 
-  const fetchStores = async () => {
-    if (pinCode.length !== 6) {
-      setError('Please enter a valid 6-digit PIN code');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  const fetchStores = async (pinCode: string) => {
+    setLoadingStores(true);
+    setStoreError(null);
     try {
+      const requestBody = {
+        tkn: "",
+        trkr: "213132",
+        lang: "en",
+        lat: "12.857247",
+        lon: "77.6081698",
+        lac: "90",
+        did: "37",
+        usag: "90",
+        apitrkr: "123234",
+        usrid: "",
+        mode: "web",
+        pltfrm: "ios",
+        formtrkr: "0",
+        srvid: "180",
+        subsid: "0",
+        subsid2: "0",
+        deptid: "1090",
+        city: "",
+        searchText: pinCode,
+        pageNo: "1",
+        pageSize: "50"
+      };
+
+      console.log('Request payload:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch('https://apigw.umangapp.in/janAushadhiApi/ws1/findstoredistance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'x-api-key': 'VKE9PnbY5k1ZYapR5PyYQ33I26sXTX569Ed7eqyg',
           'deptid': '180',
           'formtrkr': '0',
           'srvid': '1090',
           'subsid': '0',
           'subsid2': '0',
-          'tenantid': '',
+          'tenantid': ''
         },
-        body: JSON.stringify({
-          tkn: '',
-          trkr: Date.now().toString(),
-          lang: 'en',
-          lat: '12.857247', // Default latitude (can be updated with user's location)
-          lon: '77.6081698', // Default longitude (can be updated with user's location)
-          lac: '90',
-          did: '37',
-          usag: '90',
-          apitrkr: Date.now().toString(),
-          usrid: '',
-          mode: 'web',
-          pltfrm: 'ios',
-          formtrkr: '0',
-          srvid: '180',
-          subsid: '0',
-          subsid2: '0',
-          deptid: '1090',
-          city: '',
-          searchText: pinCode,
-          pageNo: '1',
-          pageSize: '50'
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      console.log('Store API Response:', data); // Add logging to debug
-      
-      if (data.rs === 'S' && data.pd.success === 'true') {
-        // Sort stores by distance
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Store API Response:', data);
+
+      if (data.rs === 'S' && data.pd && data.pd.success === 'true') {
         const sortedStores = data.pd.data.sort((a: any, b: any) => 
           parseFloat(a.distanceFromUser) - parseFloat(b.distanceFromUser)
         );
         setStores(sortedStores);
       } else {
+        setStoreError(data.rd || data.pd?.message || 'No stores found in this area');
         setStores([]);
-        setError(data.pd.message || 'No stores found in this area');
       }
-    } catch (err) {
-      console.error('Error in fetchStores:', err);
-      setError('Failed to load stores. Please try again later.');
+    } catch (e) {
+      console.error('Store API Error:', e);
+      setStoreError('An error occurred while fetching stores');
       setStores([]);
     } finally {
-      setLoading(false);
+      setLoadingStores(false);
     }
   };
 
@@ -394,12 +414,12 @@ export default function MedicineActions({
   );
 
   const renderStores = () => {
-    if (loading) {
+    if (loadingStores) {
       return <div className="p-4 text-center">Loading stores...</div>;
     }
 
-    if (error) {
-      return <div className="p-4 text-red-600">{error}</div>;
+    if (storeError) {
+      return <div className="p-4 text-red-600">{storeError}</div>;
     }
 
     if (stores.length === 0) {
@@ -535,147 +555,276 @@ export default function MedicineActions({
     );
   };
 
-  const renderActionDetails = () => {
-    switch (selectedAction) {
-      case 'alternatives':
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const currentAlternatives = alternatives.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(alternatives.length / itemsPerPage);
+  const renderActionDetails = (action: Action) => {
+    if (!action || !action.type) return null;
 
+    switch (action.type) {
+      case 'search':
         return (
-          <div className="p-4">
-            <h3 className="font-semibold mb-4">Alternative Medicines for {name}</h3>
-            {loadingAlternatives ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Searching for alternatives...</p>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Enter medicine name"
+                className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={loadingSearch}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+              >
+                {loadingSearch ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Searching...
+                  </div>
+                ) : 'Search'}
+              </button>
+            </div>
+            {searchError && (
+              <div className="p-2 bg-red-50 text-red-600 rounded-md text-sm">
+                {searchError}
               </div>
-            ) : alternativesError ? (
-              <div className="p-4 bg-red-50 text-red-600 rounded-md">
-                {alternativesError}
+            )}
+            {loadingSearch && (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
               </div>
-            ) : alternatives.length === 0 ? (
-              <div className="p-4 text-gray-500 text-center">
-                No alternatives found for {name}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {currentAlternatives.map((medicine) => (
-                  <details key={medicine.medicineId} className="group">
-                    <summary className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{medicine.generic_Name}</h4>
-                        <p className="text-sm text-gray-600">{medicine.companyName}</p>
+            )}
+            {searchResults.length > 0 && (
+              <div className="space-y-4">
+                {searchResults.map((result) => (
+                  <div key={result.medicineId} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{result.generic_Name}</h3>
+                        <p className="text-sm text-gray-500">{result.companyName}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">₹{medicine.mrp}</p>
-                          {medicine.savingAmount && (
-                            <p className="text-xs text-green-600">
-                              Save ₹{medicine.savingAmount}
-                            </p>
-                          )}
-                        </div>
-                        <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">₹{result.mrp}</p>
+                        <p className="text-sm text-gray-500">{result.unitSize}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'store':
+      case 'stores':
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={pinCode}
+                onChange={(e) => setPinCode(e.target.value)}
+                placeholder="Enter PIN code"
+                className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleStoreSearch}
+                disabled={loadingStores}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+              >
+                {loadingStores ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Searching...
+                  </div>
+                ) : 'Search'}
+              </button>
+            </div>
+            {storeError && (
+              <div className="p-2 bg-red-50 text-red-600 rounded-md text-sm">
+                {storeError}
+              </div>
+            )}
+            {loadingStores && (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+            {stores.length > 0 && (
+              <div className="space-y-4">
+                {stores.map((store) => (
+                  <details key={store.storeId} className="group">
+                    <summary className="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{store.storeName}</h3>
+                        <p className="text-sm text-gray-500">{store.storeContactPerson}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">{store.distanceFromUser} km</p>
+                        <p className="text-sm text-gray-500">Distance</p>
                       </div>
                     </summary>
-                    <div className="p-3 space-y-2 text-sm">
-                      <div className="flex flex-wrap gap-2">
-                        {medicine.iS_GENERIC === 'true' && (
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                            Generic
-                          </span>
-                        )}
-                        {medicine.iS_BPPI_PRODUCT === 'true' && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                            BPPI Product
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-gray-600">
-                        <div>
-                          <span className="font-medium">Unit Size:</span> {medicine.unitSize}
+                    <div className="p-4 bg-gray-50 rounded-b-lg">
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <p className="text-sm text-gray-600">{store.address}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Item Code:</span> {medicine.itemCode}
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                          <a href={`tel:${store.mobileNo}`} className="text-sm text-blue-600 hover:text-blue-800">
+                            {store.mobileNo}
+                          </a>
                         </div>
+                        {store.emailId && (
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <a href={`mailto:${store.emailId}`} className="text-sm text-blue-600 hover:text-blue-800">
+                              {store.emailId}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </details>
                 ))}
-                
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-4">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-sm text-gray-600">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'details':
+        return (
+          <div className="space-y-6">
+            {loadingDrug && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+            {!loadingDrug && drugInfo && (
+              <>
+                {/* Medicine Information */}
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Medicine Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {drugInfo.brand_name && (
+                      <div>
+                        <p className="text-sm text-gray-500">Brand Name</p>
+                        <p className="font-medium text-gray-900">{drugInfo.brand_name}</p>
+                      </div>
+                    )}
+                    {drugInfo.generic_name && (
+                      <div>
+                        <p className="text-sm text-gray-500">Generic Name</p>
+                        <p className="font-medium text-gray-900">{drugInfo.generic_name}</p>
+                      </div>
+                    )}
+                    {drugInfo.manufacturer && (
+                      <div>
+                        <p className="text-sm text-gray-500">Manufacturer</p>
+                        <p className="font-medium text-gray-900">{drugInfo.manufacturer}</p>
+                      </div>
+                    )}
+                    {drugInfo.active_ingredients && (
+                      <div>
+                        <p className="text-sm text-gray-500">Active Ingredients</p>
+                        <p className="font-medium text-gray-900">{drugInfo.active_ingredients}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Purpose */}
+                {drugInfo.purpose && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Purpose</h3>
+                    <p className="text-gray-700">{drugInfo.purpose}</p>
                   </div>
                 )}
+
+                {/* Dosage & Administration */}
+                {drugInfo.dosage_administration && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Dosage & Administration</h3>
+                    <p className="text-gray-700">{drugInfo.dosage_administration}</p>
+                  </div>
+                )}
+
+                {/* Warnings */}
+                {drugInfo.warnings && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-red-200 bg-red-50">
+                    <h3 className="text-lg font-medium text-red-900 mb-3">Warnings</h3>
+                    <p className="text-red-700">{drugInfo.warnings}</p>
+                  </div>
+                )}
+
+                {/* Pregnancy Risk */}
+                {drugInfo.pregnancy_risk && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Pregnancy Risk</h3>
+                    <p className="text-gray-700">{drugInfo.pregnancy_risk}</p>
+                  </div>
+                )}
+              </>
+            )}
+            {drugError && (
+              <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">
+                {drugError}
+              </div>
+            )}
+            {!loadingDrug && !drugError && !drugInfo && (
+              <div className="text-center text-gray-500">
+                No drug information available
               </div>
             )}
           </div>
         );
-      case 'stores':
+
+      case 'alternatives':
         return (
-          <div>
-            <div className="p-4 border-b">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={pinCode}
-                  onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="Enter PIN code"
-                  className="px-3 py-2 border rounded-md w-32 text-sm"
-                  maxLength={6}
-                />
-                <button
-                  onClick={fetchStores}
-                  disabled={pinCode.length !== 6 || loading}
-                  className={`px-4 py-2 text-sm font-medium rounded-md ${
-                    pinCode.length === 6 && !loading
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {loading ? 'Searching...' : 'Search'}
-                </button>
+          <div className="space-y-4">
+            {loadingAlternatives && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
               </div>
-              {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-            </div>
-            {loading ? (
-              <div className="p-4">Loading stores...</div>
-            ) : stores.length === 0 ? (
-              <div className="p-4 text-gray-500">
-                {pinCode.length === 6 
-                  ? 'No stores found in this area'
-                  : 'Enter a PIN code to search for nearby stores'}
+            )}
+            {!loadingAlternatives && alternativesError && (
+              <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">
+                {alternativesError}
               </div>
-            ) : (
-              <div className="max-h-60 overflow-y-auto">
-                {stores.map(renderStoreDetails)}
+            )}
+            {!loadingAlternatives && !alternativesError && alternatives.length === 0 && (
+              <div className="text-center text-gray-500">
+                No alternatives found for {name}
+              </div>
+            )}
+            {!loadingAlternatives && alternatives.length > 0 && (
+              <div className="space-y-4">
+                {alternatives.map((alt) => (
+                  <div key={alt.medicineId} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{alt.generic_Name}</h3>
+                        <p className="text-sm text-gray-500">{alt.companyName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">₹{alt.mrp}</p>
+                        <p className="text-sm text-gray-500">{alt.unitSize}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         );
-      case 'details':
-        return renderDrugInfo();
+
       default:
         return null;
     }
@@ -686,7 +835,151 @@ export default function MedicineActions({
   };
 
   const handleSearchStores = () => {
-    // Handle store search
+    console.log('Search button clicked');
+    console.log('Current state:', {
+      pinCode,
+      selectedAction,
+      loading
+    });
+    
+    if (pinCode.length !== 6) {
+      console.log('Invalid PIN code length');
+      setError('Please enter a valid 6-digit PIN code');
+      return;
+    }
+    
+    console.log('Starting store search');
+    setLoading(true);
+    setError('');
+    fetchStores(pinCode);
+  };
+
+  // Add log when tab changes
+  const handleTabChange = (action: string) => {
+    console.log('Tab changed to:', action);
+    setSelectedAction(action as 'search' | 'store' | 'details' | 'alternatives' | 'stores' | null);
+  };
+
+  const handleSearch = async () => {
+    setLoadingSearch(true);
+    setSearchError(null);
+    try {
+      const response = await fetch('https://apigw.umangapp.in/janAushadhiApi/ws1/searchmedicinebyname', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'VKE9PnbY5k1ZYapR5PyYQ33I26sXTX569Ed7eqyg',
+          'deptid': '180',
+          'formtrkr': '0',
+          'srvid': '1089',
+          'subsid': '0',
+          'subsid2': '0',
+          'tenantid': '',
+        },
+        body: JSON.stringify({
+          tkn: '',
+          trkr: Date.now().toString(),
+          lang: 'en',
+          lat: '28.4576912',
+          lon: '77.0454836',
+          lac: '90',
+          did: '37',
+          usag: '90',
+          apitrkr: Date.now().toString(),
+          usrid: '',
+          mode: 'web',
+          pltfrm: 'ios',
+          formtrkr: '0',
+          srvid: '180',
+          subsid: '0',
+          subsid2: '0',
+          deptid: '1089',
+          searchText: searchQuery,
+          orderBy: 'MRP ASC',
+          pageNo: 1,
+          pageSize: 50
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch search results');
+      }
+
+      const data: MedicineSearchResponse = await response.json();
+      
+      if (data.rs === 'S' && data.pd.success === 'true') {
+        setSearchResults(data.pd.data);
+      } else {
+        setSearchError(data.pd.message || 'Failed to fetch search results');
+      }
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleStoreSearch = async () => {
+    setIsSearchingStores(true);
+    setStoreError(null);
+    try {
+      const response = await fetch('https://apigw.umangapp.in/janAushadhiApi/ws1/findstoredistance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-api-key': 'VKE9PnbY5k1ZYapR5PyYQ33I26sXTX569Ed7eqyg',
+          'deptid': '180',
+          'formtrkr': '0',
+          'srvid': '1090',
+          'subsid': '0',
+          'subsid2': '0',
+          'tenantid': ''
+        },
+        body: JSON.stringify({
+          tkn: "",
+          trkr: "213132",
+          lang: "en",
+          lat: "12.857247",
+          lon: "77.6081698",
+          lac: "90",
+          did: "37",
+          usag: "90",
+          apitrkr: "123234",
+          usrid: "",
+          mode: "web",
+          pltfrm: "ios",
+          formtrkr: "0",
+          srvid: "180",
+          subsid: "0",
+          subsid2: "0",
+          deptid: "1090",
+          city: "",
+          searchText: pinCode,
+          pageNo: "1",
+          pageSize: "50"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stores');
+      }
+
+      const data = await response.json();
+      
+      if (data.rs === 'S' && data.pd && data.pd.success === 'true') {
+        setStores(data.pd.data);
+      } else {
+        setStoreError(data.rd || data.pd?.message || 'No stores found in this area');
+        setStores([]);
+      }
+    } catch (err) {
+      console.error('Error fetching stores:', err);
+      setStoreError('An error occurred while fetching stores');
+      setStores([]);
+    } finally {
+      setIsSearchingStores(false);
+    }
   };
 
   return (
@@ -720,7 +1013,7 @@ export default function MedicineActions({
 
         <div className="flex mt-3 border rounded-lg overflow-hidden">
           <button
-            onClick={() => setSelectedAction(selectedAction === 'alternatives' ? null : 'alternatives')}
+            onClick={() => handleTabChange('alternatives')}
             className={`flex-1 px-3 py-2 text-sm font-medium ${
               selectedAction === 'alternatives'
                 ? 'bg-blue-600 text-white'
@@ -730,17 +1023,7 @@ export default function MedicineActions({
             Alternatives
           </button>
           <button
-            onClick={() => setSelectedAction(selectedAction === 'stores' ? null : 'stores')}
-            className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
-              selectedAction === 'stores'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Stores
-          </button>
-          <button
-            onClick={() => setSelectedAction(selectedAction === 'details' ? null : 'details')}
+            onClick={() => handleTabChange('details')}
             className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
               selectedAction === 'details'
                 ? 'bg-blue-600 text-white'
@@ -749,10 +1032,20 @@ export default function MedicineActions({
           >
             Details
           </button>
+          <button
+            onClick={() => handleTabChange('stores')}
+            className={`flex-1 px-3 py-2 text-sm font-medium border-l ${
+              selectedAction === 'stores'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Stores
+          </button>
         </div>
 
         <div className="mt-3">
-          {renderActionDetails()}
+          {renderActionDetails({ type: selectedAction })}
         </div>
       </div>
     </div>

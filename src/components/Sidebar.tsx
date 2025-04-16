@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { AppConfig, DEFAULT_CONFIG, OCRProvider, LLMProvider } from '../types/config';
+import { PrescriptionData } from '../types/prescription';
 
-export default function Sidebar() {
+interface SidebarProps {
+  onUploadComplete: (data: PrescriptionData) => void;
+}
+
+export default function Sidebar({ onUploadComplete }: SidebarProps) {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [isSaving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedConfig = localStorage.getItem('rx-manager-config');
@@ -55,6 +63,46 @@ export default function Sidebar() {
       }
     }));
   };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    try {
+      const file = acceptedFiles[0];
+      if (!file) return;
+
+      setIsUploading(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:8002/api/analyze-prescription', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to process prescription');
+      }
+
+      const data = await response.json();
+      onUploadComplete(data);
+    } catch (error) {
+      console.error('Error processing prescription:', error);
+      setError(error instanceof Error ? error.message : 'Failed to process prescription');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onUploadComplete]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg'],
+      'application/pdf': ['.pdf']
+    },
+    maxFiles: 1
+  });
 
   return (
     <>
@@ -278,6 +326,58 @@ export default function Sidebar() {
               <p className="mt-2 text-sm text-red-600 text-center">Failed to save settings</p>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="w-[250px] bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-fit sticky top-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
+        
+        <div className="space-y-4">
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
+              ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}`}
+          >
+            <input {...getInputProps()} />
+            {isUploading ? (
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                <p className="text-sm text-gray-600">Processing prescription...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-center">
+                  <svg
+                    className="w-8 h-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {isDragActive
+                    ? 'Drop the prescription here'
+                    : 'Drag and drop a prescription here, or click to select'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Supported formats: JPG, PNG, PDF
+                </p>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
         </div>
       </div>
     </>
