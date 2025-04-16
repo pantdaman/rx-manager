@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
 import { Medicine, PrescriptionData } from '../types/prescription';
 import MedicineActions from './MedicineActions';
 import PrescriptionUploader from './PrescriptionUploader';
@@ -8,11 +9,324 @@ interface MedicineScheduleProps {
   onUploadComplete?: (data: PrescriptionData) => void;
 }
 
+interface TimeSlot {
+  id: 'morning' | 'afternoon' | 'evening' | 'night';
+  label: string;
+  icon: string;
+  theme: {
+    primary: string;
+    secondary: string;
+    hover: string;
+    selected: string;
+  };
+}
+
+const timeSlots: TimeSlot[] = [
+  {
+    id: 'morning',
+    label: 'Morning',
+    icon: '🌅',
+    theme: {
+      primary: '#fff7ed',
+      secondary: '#fed7aa',
+      hover: '#ffedd5',
+      selected: '#fb923c',
+    },
+  },
+  {
+    id: 'afternoon',
+    label: 'Afternoon',
+    icon: '☀️',
+    theme: {
+      primary: '#fefce8',
+      secondary: '#fef08a',
+      hover: '#fef9c3',
+      selected: '#facc15',
+    },
+  },
+  {
+    id: 'evening',
+    label: 'Evening',
+    icon: '🌆',
+    theme: {
+      primary: '#eff6ff',
+      secondary: '#bfdbfe',
+      hover: '#dbeafe',
+      selected: '#60a5fa',
+    },
+  },
+  {
+    id: 'night',
+    label: 'Night',
+    icon: '🌙',
+    theme: {
+      primary: '#eef2ff',
+      secondary: '#c7d2fe',
+      hover: '#e0e7ff',
+      selected: '#818cf8',
+    },
+  },
+];
+
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`;
+
+const UploadButton = styled.button`
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #374151;
+  transition: background-color 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    background-color: #f9fafb;
+  }
+`;
+
+const ScheduleContainer = styled.div`
+  background: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+`;
+
+const Header = styled.div`
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+`;
+
+const Title = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+`;
+
+const Subtitle = styled.p`
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-top: 0.5rem;
+  background-color:rgb(147, 199, 184);
+  font-weight: 600;
+`;
+
+const TimeSlotGrid = styled.div`
+  display: flex;
+  border-top: 1px solid #e5e7eb;
+`;
+
+const TimeSlotContainer = styled.div<{ theme: TimeSlot['theme'] }>`
+  flex: 1;
+  background: ${(props: { theme: TimeSlot['theme'] }) => props.theme.primary};
+  border-right: 1px solid #e5e7eb;
+  
+  &:last-child {
+    border-right: none;
+  }
+`;
+
+const TimeSlotHeader = styled.div<{ theme: TimeSlot['theme'] }>`
+  padding: 1rem;
+  background: ${(props: { theme: TimeSlot['theme'] }) => props.theme.secondary};
+  border-bottom: 1px solid ${(props: { theme: TimeSlot['theme'] }) => props.theme.secondary};
+  text-align: center;
+`;
+
+const TimeSlotTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #374151;
+`;
+
+const MedicineList = styled.div`
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const MedicineCardStyled = styled.div<{ isSelected: boolean; theme: TimeSlot['theme'] }>`
+  padding: 1rem;
+  background: ${(props: { isSelected: boolean; theme: TimeSlot['theme'] }) => 
+    props.isSelected ? `linear-gradient(135deg, ${props.theme.selected}, ${props.theme.secondary})` : 'white'};
+  border-radius: 0.75rem;
+  box-shadow: ${props => props.isSelected ? 
+    '0 4px 12px rgba(0, 0, 0, 0.15)' : 
+    '0 2px 4px rgba(0, 0, 0, 0.05)'};
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid ${props => props.isSelected ? props.theme.secondary : '#e5e7eb'};
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    background: ${props => props.isSelected ? 
+      `linear-gradient(135deg, ${props.theme.selected}, ${props.theme.secondary})` : 
+      props.theme.hover};
+  }
+`;
+
+const MedicineCardContent = styled.div<{ $isSelected: boolean }>`
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: ${props => props.$isSelected ? '#eff6ff' : 'transparent'};
+  transition: all 0.2s;
+  cursor: pointer;
+
+  &:hover {
+    background-color: ${props => props.$isSelected ? '#eff6ff' : '#f9fafb'};
+  }
+`;
+
+const MedicineInfo = styled.div`
+  flex: 1;
+`;
+
+const MedicineName = styled.h4<{ $isSelected: boolean }>`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${props => props.$isSelected ? '#2563eb' : '#111827'};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const ConfidenceBadge = styled.span<{ $confidence: number }>`
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: ${props => 
+    props.$confidence >= 90 ? 'rgba(34, 197, 94, 0.1)' :
+    props.$confidence >= 70 ? 'rgba(234, 179, 8, 0.1)' :
+    'rgba(239, 68, 68, 0.1)'
+  };
+  color: ${props => 
+    props.$confidence >= 90 ? 'rgb(34, 197, 94)' :
+    props.$confidence >= 70 ? 'rgb(234, 179, 8)' :
+    'rgb(239, 68, 68)'
+  };
+`;
+
+const MedicineDosage = styled.div<{ $isSelected: boolean }>`
+  font-size: 0.875rem;
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+  margin-top: 0.25rem;
+`;
+
+const MedicineDuration = styled.div<{ $isSelected: boolean }>`
+  font-size: 0.875rem;
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+  margin-top: 0.25rem;
+`;
+
+const MedicineInstructions = styled.p<{ $isSelected: boolean }>`
+  font-size: 0.875rem;
+  color: ${props => props.$isSelected ? 'rgba(255, 255, 255, 0.9)' : '#6b7280'};
+  margin-top: 0.5rem;
+  line-height: 1.25;
+`;
+
+const TimeSlot = styled.div`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+`;
+
+const MedicineCard: React.FC<{
+  medicine: Medicine;
+  isSelected: boolean;
+  onClick: () => void;
+  theme: TimeSlot['theme'];
+}> = ({ medicine, isSelected, onClick, theme }) => (
+  <MedicineCardStyled isSelected={isSelected} theme={theme} onClick={onClick}>
+    <MedicineCardContent $isSelected={isSelected}>
+      <MedicineInfo>
+        <MedicineName $isSelected={isSelected}>
+          {medicine.name}
+          {medicine.confidence && (
+            <ConfidenceBadge $confidence={medicine.confidence}>
+              {medicine.confidence}%
+            </ConfidenceBadge>
+          )}
+        </MedicineName>
+        <MedicineDosage $isSelected={isSelected}>
+          {medicine.dosage}
+        </MedicineDosage>
+        <MedicineDuration $isSelected={isSelected}>
+          {medicine.duration}
+        </MedicineDuration>
+      </MedicineInfo>
+    </MedicineCardContent>
+    {medicine.specialInstructions && (
+      <MedicineInstructions $isSelected={isSelected}>
+        {medicine.specialInstructions}
+      </MedicineInstructions>
+    )}
+  </MedicineCardStyled>
+);
+
+const TimeSlotSection: React.FC<{
+  slot: TimeSlot;
+  medicines: Medicine[];
+  selectedMedicine: Medicine | null;
+  onMedicineClick: (medicine: Medicine) => void;
+}> = ({ slot, medicines, selectedMedicine, onMedicineClick }) => (
+  <TimeSlotContainer theme={slot.theme}>
+    <TimeSlotHeader theme={slot.theme}>
+      <TimeSlotTitle>
+        <span>{slot.label}</span>
+        <span>{slot.icon}</span>
+      </TimeSlotTitle>
+    </TimeSlotHeader>
+    <MedicineList>
+      {medicines.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#6b7280' }}>
+          No medication
+        </div>
+      ) : (
+        medicines.map((medicine, index) => (
+          <MedicineCard
+            key={`${medicine.name}-${index}`}
+            medicine={medicine}
+            isSelected={selectedMedicine?.name === medicine.name}
+            onClick={() => onMedicineClick(medicine)}
+            theme={slot.theme}
+          />
+        ))
+      )}
+    </MedicineList>
+  </TimeSlotContainer>
+);
+
 const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUploadComplete }) => {
-  const [activeReminders, setActiveReminders] = useState<Set<string>>(new Set());
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [showMedicineDetails, setShowMedicineDetails] = useState(false);
   const [showUploader, setShowUploader] = useState(true);
+
+  useEffect(() => {
+    if (medicines.length > 0) {
+      setShowUploader(false);
+    }
+  }, [medicines]);
 
   const handleUploadComplete = (data: PrescriptionData) => {
     if (onUploadComplete) {
@@ -21,29 +335,13 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     setShowUploader(false);
   };
 
-  // Hide uploader when medicines are loaded
-  useEffect(() => {
-    if (medicines.length > 0) {
-      setShowUploader(false);
-    }
-  }, [medicines]);
-
-  // Group medicines by their schedule
   const groupedMedicines = medicines.reduce((acc, medicine) => {
     const { frequency } = medicine;
     
-    if (frequency.morning) {
-      acc.morning.push(medicine);
-    }
-    if (frequency.afternoon) {
-      acc.afternoon.push(medicine);
-    }
-    if (frequency.evening) {
-      acc.evening.push(medicine);
-    }
-    if (frequency.night) {
-      acc.night.push(medicine);
-    }
+    if (frequency.morning) acc.morning.push(medicine);
+    if (frequency.afternoon) acc.afternoon.push(medicine);
+    if (frequency.evening) acc.evening.push(medicine);
+    if (frequency.night) acc.night.push(medicine);
     
     return acc;
   }, {
@@ -53,114 +351,21 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     night: [] as Medicine[]
   });
 
-  const toggleReminder = (medicine: Medicine) => {
-    setActiveReminders(prevReminders =>
-      new Set(prevReminders).add(medicine.name)
-    );
-  };
-
   const handleMedicineClick = (medicine: Medicine) => {
     setSelectedMedicine(medicine);
     setShowMedicineDetails(true);
   };
 
-  const handleCloseDetails = () => {
-    setShowMedicineDetails(false);
-    // Don't reset selectedMedicine here to maintain the highlight
-  };
-
-  const formatFrequency = (frequency: Medicine['frequency']): string => {
-    const times = [];
-    if (frequency.morning) times.push('Morning');
-    if (frequency.afternoon) times.push('Afternoon'); 
-    if (frequency.evening) times.push('Evening');
-    if (frequency.night) times.push('Night');
-    return times.join(', ');
-  };
-
-  const renderMedicineList = (medicines: Medicine[], timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night') => {
-    const colorClasses = {
-      morning: 'bg-orange-50 border-orange-200',
-      afternoon: 'bg-yellow-50 border-yellow-200',
-      evening: 'bg-blue-50 border-blue-200',
-      night: 'bg-indigo-50 border-indigo-200',
-    };
-
-    if (medicines.length === 0) {
-      return (
-        <div className={`text-gray-500 text-center py-3 ${colorClasses[timeOfDay]}`}>
-          No medication
-        </div>
-      );
-    }
-
-    return medicines.map((medicine, index) => (
-      <div 
-        key={`${medicine.name}-${index}`} 
-        className={`py-3 px-4 ${index !== medicines.length - 1 ? 'border-b' : ''} cursor-pointer transition-colors ${colorClasses[timeOfDay]}`}
-        onClick={() => handleMedicineClick(medicine)}
-      >
-        <div className={`flex items-center space-x-2 ${selectedMedicine?.name === medicine.name ? 'bg-blue-100' : 'transparent'} rounded-full shadow-md p-2 w-40 h-10 overflow-hidden transition-colors duration-200`}>
-          <h4 className="text-gray-900 font-medium truncate">
-            <span>{medicine.name}</span>
-          </h4>
-        </div>
-      </div>
-    ));
-  };
-
-  const timeSlots = [
-    {
-      id: 'morning',
-      label: 'Morning',
-      icon: '🌅',
-      color: 'text-orange-900',
-      borderColor: 'border-orange-300',
-      bgColor: 'bg-orange-50',
-      headerBg: 'bg-orange-200',
-    },
-    {
-      id: 'afternoon',
-      label: 'Afternoon',
-      icon: '☀️',
-      color: 'text-yellow-900',
-      borderColor: 'border-yellow-300',
-      bgColor: 'bg-yellow-50',
-      headerBg: 'bg-yellow-200',
-    },
-    {
-      id: 'evening',
-      label: 'Evening',
-      icon: '🌆',
-      color: 'text-blue-900',
-      borderColor: 'border-blue-300',
-      bgColor: 'bg-blue-50',
-      headerBg: 'bg-blue-200',
-    },
-    {
-      id: 'night',
-      label: 'Night',
-      icon: '🌙',
-      color: 'text-indigo-900',
-      borderColor: 'border-indigo-300',
-      bgColor: 'bg-indigo-50',
-      headerBg: 'bg-indigo-200',
-    },
-  ] as const;
-
   return (
-    <div className="space-y-6">
+    <Container>
       {showUploader ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div style={{ background: 'white', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid #e5e7eb' }}>
           <PrescriptionUploader onUploadComplete={handleUploadComplete} />
         </div>
       ) : (
-        <button
-          onClick={() => setShowUploader(true)}
-          className="w-full bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 flex items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 transition-colors"
-        >
+        <UploadButton onClick={() => setShowUploader(true)}>
           <svg
-            className="w-5 h-5"
+            style={{ width: '1.25rem', height: '1.25rem' }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -173,53 +378,48 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
             />
           </svg>
           Upload New Prescription
-        </button>
+        </UploadButton>
       )}
 
-      {/* Medicine Schedule Display */}
       {medicines.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900 p-6 border-b border-gray-200">
-            Your Daily Medication Schedule
-          </h2>
-          <p className="text-sm text-gray-600 px-6 pb-4 border-b border-gray-200">
-            Click on the medicine tab to find alternatives, locate nearby stores, and get the details of the medicine.
-          </p>
+        <ScheduleContainer>
+          <Header>
+            <Title>Your Daily Medication Schedule</Title>
+            <Subtitle>
+              Click on any medicine to view generic alternatives from Jan Aushadhi , locate nearby Jan Aushadhi stores, and get detailed information.
+            </Subtitle>
+          </Header>
           
-          <div className="flex divide-x divide-gray-200">
+          <TimeSlotGrid>
             {timeSlots.map((slot) => (
-              <div 
-                key={slot.id} 
-                className={`flex-1 ${slot.bgColor}`}
-              >
-                <div className={`py-6 px-4 ${slot.headerBg} border-b ${slot.borderColor}`}>
-                  <h3 className="text-xl font-bold flex items-center justify-center" style={{ color: '#000000' }}>
-                    <span style={{ color: '#000000' }}>{slot.label}</span>
-                    <span className="ml-2">{slot.icon}</span>
-                  </h3>
-                </div>
-                <div className="h-full">
-                  {renderMedicineList(groupedMedicines[slot.id], slot.id)}
-                </div>
-              </div>
+              <TimeSlotSection
+                key={slot.id}
+                slot={slot}
+                medicines={groupedMedicines[slot.id]}
+                selectedMedicine={selectedMedicine}
+                onMedicineClick={handleMedicineClick}
+              />
             ))}
-          </div>
-        </div>
+          </TimeSlotGrid>
+        </ScheduleContainer>
       )}
 
-      {/* Medicine Details Modal */}
       {showMedicineDetails && selectedMedicine && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div style={{ background: 'white', borderRadius: '0.75rem', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
           <MedicineActions
             name={selectedMedicine.name}
             dosage={selectedMedicine.dosage}
-            frequency={formatFrequency(selectedMedicine.frequency)}
             duration={selectedMedicine.duration}
-            onClose={handleCloseDetails}
+            confidence={selectedMedicine.confidence}
+            frequency={Object.entries(selectedMedicine.frequency)
+              .filter(([_, value]) => value)
+              .map(([time]) => time.charAt(0).toUpperCase() + time.slice(1))
+              .join(', ')}
+            onClose={() => setShowMedicineDetails(false)}
           />
         </div>
       )}
-    </div>
+    </Container>
   );
 };
 
