@@ -1,10 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import PrescriptionUploader from '../components/PrescriptionUploader';
+import MedicineSchedule from '../components/MedicineSchedule';
 import { PrescriptionData } from '../types/prescription';
 import Sidebar from '../components/Sidebar';
 import MedicineActions from '../components/MedicineActions';
+
+// Header Component
+const AppHeader = () => (
+  <header className="bg-white shadow-sm sticky top-0 z-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between h-16">
+        <div className="flex items-center">
+          {/* Placeholder Logo - Replace with your actual logo */}
+          <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          <span className="ml-3 text-xl font-semibold text-gray-900">Prescription Buddy</span>
+        </div>
+        {/* Add navigation or other header elements here if needed */}
+      </div>
+    </div>
+  </header>
+);
 
 export default function Home() {
   const [prescriptionData, setPrescriptionData] = useState<PrescriptionData | null>(null);
@@ -147,39 +166,19 @@ export default function Home() {
     );
   };
 
+  const handleUploadComplete = (data: PrescriptionData) => {
+    setPrescriptionData(data);
+  };
+
   return (
-    <main className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-[1400px] mx-auto relative">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Prescription Manager
-        </h1>
-
-        <div className="flex gap-6">
-          {/* Sidebar */}
-          <Sidebar onUploadComplete={setPrescriptionData} />
-
-          {/* Main Content Area - 50% */}
-          <div className="w-[50%]">
-            {!prescriptionData ? (
-              <PrescriptionUploader onUploadComplete={setPrescriptionData} />
-            ) : (
-              <div className="space-y-4">
-                {prescriptionData.medicines.map((medicine, index) => (
-                  <MedicineActions
-                    key={index}
-                    name={medicine.name}
-                    dosage={medicine.dosage}
-                    frequency={formatFrequency(medicine.frequency)}
-                    duration={medicine.duration}
-                    confidence={medicine.confidence}
-                    showStoreLocator={false}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </main>
+    <div className="min-h-screen bg-gray-100">
+      <AppHeader />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <MedicineSchedule 
+          medicines={prescriptionData?.medicines || []} 
+          onUploadComplete={handleUploadComplete}
+        />
+      </main>
+    </div>
   );
 }

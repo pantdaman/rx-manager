@@ -10,6 +10,7 @@ interface MedicineActionsProps {
   confidence?: number;
   frequency?: string;
   showStoreLocator?: boolean;
+  onClose?: () => void;
 }
 
 interface DrugInfo {
@@ -65,7 +66,8 @@ export default function MedicineActions({
   duration, 
   confidence, 
   frequency, 
-  showStoreLocator 
+  showStoreLocator, 
+  onClose
 }: MedicineActionsProps) {
   const [selectedAction, setSelectedAction] = useState<'search' | 'store' | 'details' | 'alternatives' | 'stores' | null>(null);
   const [stores, setStores] = useState<StoreLocation[]>([]);
@@ -81,7 +83,7 @@ export default function MedicineActions({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [currentStorePage, setCurrentStorePage] = useState(1);
-  const storesPerPage = 10;
+  const storesPerPage = 5;
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [pincode, setPincode] = useState('');
   const [activeTab, setActiveTab] = useState<'alternatives' | 'details'>('alternatives');
@@ -95,16 +97,16 @@ export default function MedicineActions({
   const [loadingSearch, setLoadingSearch] = useState(false);
 
   useEffect(() => {
-    console.log('useEffect triggered:', { selectedAction, pinCode, name });
+    console.log('useEffect triggered:', { selectedAction, pinCode, name, currentStorePage });
     if (selectedAction === 'stores' && pinCode.length === 6) {
-      console.log('useEffect calling fetchStores');
-      fetchStores(pinCode);
+      console.log('useEffect calling fetchStores for page:', currentStorePage);
+      fetchStores(pinCode, currentStorePage);
     } else if (selectedAction === 'details' && name) {
       fetchDrugInfo();
     } else if (selectedAction === 'alternatives' && name) {
       fetchAlternatives();
     }
-  }, [selectedAction, pinCode, name]);
+  }, [selectedAction, pinCode, name, currentStorePage]);
 
   // Function to clean medicine name by removing dosage and other numbers
   const cleanMedicineName = (name: string): string => {
@@ -207,7 +209,7 @@ export default function MedicineActions({
     }
   };
 
-  const fetchStores = async (pinCode: string) => {
+  const fetchStores = async (pinCode: string, page: number = 1) => {
     setLoadingStores(true);
     setStoreError(null);
     try {
@@ -231,8 +233,8 @@ export default function MedicineActions({
         deptid: "1090",
         city: "",
         searchText: pinCode,
-        pageNo: "1",
-        pageSize: "50"
+        pageNo: page.toString(),
+        pageSize: storesPerPage.toString()
       };
 
       console.log('Request payload:', JSON.stringify(requestBody, null, 2));
@@ -362,10 +364,7 @@ export default function MedicineActions({
       </summary>
       <div className="px-4 pb-4 space-y-3">
         <div className="flex items-start gap-2">
-          <svg className="w-4 h-4 mt-0.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+
           <div className="text-sm text-gray-600">
             <div>{store.address}</div>
             <div className="mt-1 text-gray-500">
@@ -415,55 +414,46 @@ export default function MedicineActions({
 
   const renderStores = () => {
     if (loadingStores) {
-      return <div className="p-4 text-center">Loading stores...</div>;
+      return (
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      );
     }
 
     if (storeError) {
-      return <div className="p-4 text-red-600">{storeError}</div>;
+      return <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">{storeError}</div>;
     }
 
-    if (stores.length === 0) {
-      return <div className="p-4 text-gray-500">No stores found in this area</div>;
+    if (stores.length === 0 && !loadingStores) {
+      return <div className="text-center text-gray-500 py-4">No stores found for this pincode.</div>;
     }
 
-    // Calculate pagination
-    const totalPages = Math.ceil(stores.length / storesPerPage);
-    const startIndex = (currentStorePage - 1) * storesPerPage;
-    const endIndex = startIndex + storesPerPage;
-    const currentStores = stores.slice(startIndex, endIndex);
+    const hasNextPage = stores.length === storesPerPage;
+    const hasPreviousPage = currentStorePage > 1;
 
     return (
-      <div>
-        <div className="max-h-[400px] overflow-y-auto">
-          {currentStores.map(renderStoreDetails)}
+      <div className="space-y-4">
+        {stores.map((store) => renderStoreDetails(store))}
+
+        {/* Pagination Controls */}
+        <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+          <button
+            onClick={() => handleStorePageChange(currentStorePage - 1)}
+            disabled={!hasPreviousPage}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">Page {currentStorePage}</span>
+          <button
+            onClick={() => handleStorePageChange(currentStorePage + 1)}
+            disabled={!hasNextPage}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
         </div>
-        
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-gray-600">
-              Showing {startIndex + 1}-{Math.min(endIndex, stores.length)} of {stores.length} stores
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentStorePage(prev => Math.max(prev - 1, 1))}
-                disabled={currentStorePage === 1}
-                className="px-3 py-1 text-sm rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-600">
-                Page {currentStorePage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentStorePage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentStorePage === totalPages}
-                className="px-3 py-1 text-sm rounded-md border disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -623,7 +613,8 @@ export default function MedicineActions({
                 type="text"
                 value={pinCode}
                 onChange={(e) => setPinCode(e.target.value)}
-                placeholder="Enter PIN code"
+                placeholder="Enter 6-digit PIN code"
+                maxLength={6}
                 className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -636,66 +627,12 @@ export default function MedicineActions({
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Searching...
                   </div>
-                ) : 'Search'}
+                ) : 'Search Stores'}
               </button>
             </div>
-            {storeError && (
-              <div className="p-2 bg-red-50 text-red-600 rounded-md text-sm">
-                {storeError}
-              </div>
-            )}
-            {loadingStores && (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            )}
-            {stores.length > 0 && (
-              <div className="space-y-4">
-                {stores.map((store) => (
-                  <details key={store.storeId} className="group">
-                    <summary className="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{store.storeName}</h3>
-                        <p className="text-sm text-gray-500">{store.storeContactPerson}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">{store.distanceFromUser} km</p>
-                        <p className="text-sm text-gray-500">Distance</p>
-                      </div>
-                    </summary>
-                    <div className="p-4 bg-gray-50 rounded-b-lg">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <p className="text-sm text-gray-600">{store.address}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <a href={`tel:${store.mobileNo}`} className="text-sm text-blue-600 hover:text-blue-800">
-                            {store.mobileNo}
-                          </a>
-                        </div>
-                        {store.emailId && (
-                          <div className="flex items-center space-x-2">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <a href={`mailto:${store.emailId}`} className="text-sm text-blue-600 hover:text-blue-800">
-                              {store.emailId}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )}
+            <div className="mt-4"> 
+              {renderStores()}
+            </div>
           </div>
         );
 
@@ -835,23 +772,17 @@ export default function MedicineActions({
   };
 
   const handleSearchStores = () => {
-    console.log('Search button clicked');
-    console.log('Current state:', {
-      pinCode,
-      selectedAction,
-      loading
-    });
-    
-    if (pinCode.length !== 6) {
-      console.log('Invalid PIN code length');
-      setError('Please enter a valid 6-digit PIN code');
-      return;
+    setCurrentStorePage(1);
+    setError(null);
+    if (pinCode.length === 6) {
+      fetchStores(pinCode, 1);
+    } else {
+      setError('Please enter a valid 6-digit pincode.');
     }
-    
-    console.log('Starting store search');
-    setLoading(true);
-    setError('');
-    fetchStores(pinCode);
+  };
+
+  const handleStorePageChange = (newPage: number) => {
+    setCurrentStorePage(newPage);
   };
 
   // Add log when tab changes

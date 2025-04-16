@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { PrescriptionData } from '../types/prescription';
 
@@ -6,18 +6,18 @@ interface PrescriptionUploaderProps {
   onUploadComplete: (data: PrescriptionData) => void;
 }
 
-export default function PrescriptionUploader({ onUploadComplete }: PrescriptionUploaderProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
+const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadComplete }) => {
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+
+    const file = acceptedFiles[0];
+    setIsUploading(true);
+    setError(null);
+
     try {
-      const file = acceptedFiles[0];
-      if (!file) return;
-
-      setIsProcessing(true);
-      setError(null);
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -27,41 +27,43 @@ export default function PrescriptionUploader({ onUploadComplete }: PrescriptionU
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to process prescription');
+        throw new Error('Failed to analyze prescription');
       }
 
       const data = await response.json();
       onUploadComplete(data);
-    } catch (error) {
-      console.error('Error processing prescription:', error);
-      setError(error instanceof Error ? error.message : 'Failed to process prescription');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsProcessing(false);
+      setIsUploading(false);
     }
   }, [onUploadComplete]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg'],
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
     },
-    maxFiles: 1
+    multiple: false,
   });
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4">
+    <div className="w-full bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Prescription</h2>
+      
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-          ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}`}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+        }`}
       >
         <input {...getInputProps()} />
-        {isProcessing ? (
+        {isUploading ? (
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Processing prescription...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+            <p className="text-sm text-gray-600">Processing prescription...</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -80,22 +82,27 @@ export default function PrescriptionUploader({ onUploadComplete }: PrescriptionU
                 />
               </svg>
             </div>
-            <p className="text-lg text-gray-600">
-              {isDragActive
-                ? 'Drop the prescription here'
-                : 'Drag and drop a prescription here, or click to select'}
-            </p>
-            <p className="text-sm text-gray-500">
-              Supported formats: JPG, PNG, PDF
-            </p>
+            <div className="space-y-2">
+              <p className="text-lg text-gray-600">
+                {isDragActive
+                  ? 'Drop the prescription here'
+                  : 'Drag and drop a prescription here, or click to select'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Supported formats: JPG, PNG, PDF
+              </p>
+            </div>
           </div>
         )}
       </div>
+
       {error && (
-        <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg">
+        <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-md text-sm">
           {error}
         </div>
       )}
     </div>
   );
-} 
+};
+
+export default PrescriptionUploader; 

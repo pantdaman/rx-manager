@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { AppConfig, DEFAULT_CONFIG, OCRProvider, LLMProvider } from '../types/config';
 import { PrescriptionData } from '../types/prescription';
+import MedicineSchedule from './MedicineSchedule';
 
 interface SidebarProps {
   onUploadComplete: (data: PrescriptionData) => void;
@@ -14,6 +15,7 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionData | null>(null);
 
   useEffect(() => {
     const savedConfig = localStorage.getItem('rx-manager-config');
@@ -65,13 +67,13 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+
+    const file = acceptedFiles[0];
+    setIsUploading(true);
+    setError(null);
+
     try {
-      const file = acceptedFiles[0];
-      if (!file) return;
-
-      setIsUploading(true);
-      setError(null);
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -81,15 +83,14 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to process prescription');
+        throw new Error('Failed to analyze prescription');
       }
 
       const data = await response.json();
+      setPrescriptionData(data);
       onUploadComplete(data);
-    } catch (error) {
-      console.error('Error processing prescription:', error);
-      setError(error instanceof Error ? error.message : 'Failed to process prescription');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsUploading(false);
     }
@@ -98,10 +99,11 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg'],
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
     },
-    maxFiles: 1
+    multiple: false,
   });
 
   return (
@@ -380,6 +382,12 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
           )}
         </div>
       </div>
+
+      {prescriptionData && (
+        <div className="mt-6">
+          <MedicineSchedule medicines={prescriptionData.medicines} />
+        </div>
+      )}
     </>
   );
 } 
