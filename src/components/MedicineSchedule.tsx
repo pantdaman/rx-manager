@@ -4,6 +4,12 @@ import { Medicine, PrescriptionData } from '../types/prescription';
 import MedicineActions from './MedicineActions';
 import PrescriptionUploader from './PrescriptionUploader';
 
+declare global {
+  interface Window {
+    bhashini: any;
+  }
+}
+
 interface MedicineScheduleProps {
   medicines: Medicine[];
   onUploadComplete?: (data: PrescriptionData) => void;
@@ -12,7 +18,6 @@ interface MedicineScheduleProps {
 interface TimeSlot {
   id: 'morning' | 'afternoon' | 'evening' | 'night';
   label: string;
-  icon: string;
   theme: {
     primary: string;
     secondary: string;
@@ -25,7 +30,6 @@ const timeSlots: TimeSlot[] = [
   {
     id: 'morning',
     label: 'Morning',
-    icon: '🌅',
     theme: {
       primary: '#fff7ed',
       secondary: '#fed7aa',
@@ -36,7 +40,6 @@ const timeSlots: TimeSlot[] = [
   {
     id: 'afternoon',
     label: 'Afternoon',
-    icon: '☀️',
     theme: {
       primary: '#fefce8',
       secondary: '#fef08a',
@@ -47,7 +50,6 @@ const timeSlots: TimeSlot[] = [
   {
     id: 'evening',
     label: 'Evening',
-    icon: '🌆',
     theme: {
       primary: '#eff6ff',
       secondary: '#bfdbfe',
@@ -58,7 +60,6 @@ const timeSlots: TimeSlot[] = [
   {
     id: 'night',
     label: 'Night',
-    icon: '🌙',
     theme: {
       primary: '#eef2ff',
       secondary: '#c7d2fe',
@@ -100,9 +101,40 @@ const ScheduleContainer = styled.div`
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 `;
 
-const Header = styled.div`
+const ScheduleHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
   padding: 1.5rem;
+  background: linear-gradient(to right, #f3f4f6, #ffffff);
   border-bottom: 1px solid #e5e7eb;
+`;
+
+const HeadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+`;
+
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+`;
+
+const DisclaimerText = styled.span`
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  font-weight: 500;
 `;
 
 const Title = styled.h2`
@@ -111,12 +143,16 @@ const Title = styled.h2`
   color: #111827;
 `;
 
-const Subtitle = styled.p`
+const Subtitle = styled.div`
   font-size: 0.875rem;
-  color: #4b5563;
+  color: #1e40af;
   margin-top: 0.5rem;
-  background-color:rgb(147, 199, 184);
-  font-weight: 600;
+  background: #dbeafe;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid #93c5fd;
+  font-weight: 500;
+  line-height: 1.5;
 `;
 
 const TimeSlotGrid = styled.div`
@@ -128,6 +164,7 @@ const TimeSlotContainer = styled.div<{ theme: TimeSlot['theme'] }>`
   flex: 1;
   background: ${(props: { theme: TimeSlot['theme'] }) => props.theme.primary};
   border-right: 1px solid #e5e7eb;
+  padding: 0.5rem;
   
   &:last-child {
     border-right: none;
@@ -135,54 +172,50 @@ const TimeSlotContainer = styled.div<{ theme: TimeSlot['theme'] }>`
 `;
 
 const TimeSlotHeader = styled.div<{ theme: TimeSlot['theme'] }>`
-  padding: 1rem;
+  padding: 0.5rem;
   background: ${(props: { theme: TimeSlot['theme'] }) => props.theme.secondary};
   border-bottom: 1px solid ${(props: { theme: TimeSlot['theme'] }) => props.theme.secondary};
   text-align: center;
 `;
 
 const TimeSlotTitle = styled.h3`
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   color: #374151;
+  margin: 0;
 `;
 
 const MedicineList = styled.div`
-  padding: 1rem;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.25rem;
 `;
 
-const MedicineCardStyled = styled.div<{ isSelected: boolean; theme: TimeSlot['theme'] }>`
-  padding: 1rem;
-  background: ${(props: { isSelected: boolean; theme: TimeSlot['theme'] }) => 
-    props.isSelected ? `linear-gradient(135deg, ${props.theme.selected}, ${props.theme.secondary})` : 'white'};
-  border-radius: 0.75rem;
-  box-shadow: ${props => props.isSelected ? 
-    '0 4px 12px rgba(0, 0, 0, 0.15)' : 
-    '0 2px 4px rgba(0, 0, 0, 0.05)'};
+const MedicineCardStyled = styled.div<{ $isSelected: boolean; theme: TimeSlot['theme'] }>`
+  background-color: ${props => props.$isSelected ? props.theme.selected : 'white'};
+  border: 1px solid ${props => props.$isSelected ? props.theme.primary : '#e5e7eb'};
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  border: 1px solid ${props => props.isSelected ? props.theme.secondary : '#e5e7eb'};
+  transition: all 0.2s ease;
+  box-shadow: ${props => props.$isSelected ? '0 2px 4px -1px rgba(0, 0, 0, 0.1)' : 'none'};
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-    background: ${props => props.isSelected ? 
-      `linear-gradient(135deg, ${props.theme.selected}, ${props.theme.secondary})` : 
-      props.theme.hover};
+    background-color: ${props => props.$isSelected ? props.theme.selected : props.theme.hover};
+    border-color: ${props => props.theme.primary};
   }
 `;
 
 const MedicineCardContent = styled.div<{ $isSelected: boolean }>`
   flex: 1;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
   background-color: ${props => props.$isSelected ? '#eff6ff' : 'transparent'};
   transition: all 0.2s;
   cursor: pointer;
@@ -194,21 +227,63 @@ const MedicineCardContent = styled.div<{ $isSelected: boolean }>`
 
 const MedicineInfo = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 `;
 
 const MedicineName = styled.h4<{ $isSelected: boolean }>`
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: ${props => props.$isSelected ? '#2563eb' : '#111827'};
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
+`;
+
+const MedicineDetails = styled.div<{ $isSelected: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+`;
+
+const MedicineDetailItem = styled.span<{ $isSelected: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+`;
+
+const DetailLabel = styled.span`
+  font-weight: 500;
+  color: inherit;
+`;
+
+const DetailValue = styled.span`
+  color: inherit;
+`;
+
+const MedicineDosage = styled.span<{ $isSelected: boolean }>`
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+`;
+
+const MedicineDuration = styled.span<{ $isSelected: boolean }>`
+  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
+`;
+
+const MedicineInstructions = styled.p<{ $isSelected: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.$isSelected ? 'rgba(255, 255, 255, 0.9)' : '#6b7280'};
+  margin-top: 0.25rem;
+  line-height: 1.25;
 `;
 
 const ConfidenceBadge = styled.span<{ $confidence: number }>`
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  padding: 0.125rem 0.25rem;
   border-radius: 9999px;
   background-color: ${props => 
     props.$confidence >= 90 ? 'rgba(34, 197, 94, 0.1)' :
@@ -220,25 +295,6 @@ const ConfidenceBadge = styled.span<{ $confidence: number }>`
     props.$confidence >= 70 ? 'rgb(234, 179, 8)' :
     'rgb(239, 68, 68)'
   };
-`;
-
-const MedicineDosage = styled.div<{ $isSelected: boolean }>`
-  font-size: 0.875rem;
-  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
-  margin-top: 0.25rem;
-`;
-
-const MedicineDuration = styled.div<{ $isSelected: boolean }>`
-  font-size: 0.875rem;
-  color: ${props => props.$isSelected ? '#2563eb' : '#6b7280'};
-  margin-top: 0.25rem;
-`;
-
-const MedicineInstructions = styled.p<{ $isSelected: boolean }>`
-  font-size: 0.875rem;
-  color: ${props => props.$isSelected ? 'rgba(255, 255, 255, 0.9)' : '#6b7280'};
-  margin-top: 0.5rem;
-  line-height: 1.25;
 `;
 
 const TimeSlot = styled.div`
@@ -256,33 +312,40 @@ const MedicineCard: React.FC<{
   isSelected: boolean;
   onClick: () => void;
   theme: TimeSlot['theme'];
-}> = ({ medicine, isSelected, onClick, theme }) => (
-  <MedicineCardStyled isSelected={isSelected} theme={theme} onClick={onClick}>
-    <MedicineCardContent $isSelected={isSelected}>
-      <MedicineInfo>
-        <MedicineName $isSelected={isSelected}>
-          {medicine.name}
-          {medicine.confidence && (
-            <ConfidenceBadge $confidence={medicine.confidence}>
-              {medicine.confidence}%
-            </ConfidenceBadge>
-          )}
-        </MedicineName>
-        <MedicineDosage $isSelected={isSelected}>
-          {medicine.dosage}
-        </MedicineDosage>
-        <MedicineDuration $isSelected={isSelected}>
-          {medicine.duration}
-        </MedicineDuration>
-      </MedicineInfo>
-    </MedicineCardContent>
-    {medicine.specialInstructions && (
-      <MedicineInstructions $isSelected={isSelected}>
-        {medicine.specialInstructions}
-      </MedicineInstructions>
-    )}
-  </MedicineCardStyled>
-);
+}> = ({ medicine, isSelected, onClick, theme }) => {
+  return (
+    <MedicineCardStyled $isSelected={isSelected} theme={theme} onClick={onClick}>
+      <MedicineCardContent $isSelected={isSelected}>
+        <MedicineInfo>
+          <MedicineName $isSelected={isSelected}>
+            {medicine.name}
+            {medicine.confidence && (
+              <ConfidenceBadge $confidence={medicine.confidence}>
+                {medicine.confidence}%
+              </ConfidenceBadge>
+            )}
+          </MedicineName>
+          <MedicineDetails $isSelected={isSelected}>
+            <MedicineDetailItem $isSelected={isSelected}>
+              <DetailLabel>Dosage:</DetailLabel>
+              <DetailValue>{medicine.dosage}</DetailValue>
+            </MedicineDetailItem>
+            <span>•</span>
+            <MedicineDetailItem $isSelected={isSelected}>
+              <DetailLabel>Duration:</DetailLabel>
+              <DetailValue>{medicine.duration}</DetailValue>
+            </MedicineDetailItem>
+          </MedicineDetails>
+        </MedicineInfo>
+      </MedicineCardContent>
+      {medicine.specialInstructions && (
+        <MedicineInstructions $isSelected={isSelected}>
+          {medicine.specialInstructions}
+        </MedicineInstructions>
+      )}
+    </MedicineCardStyled>
+  );
+};
 
 const TimeSlotSection: React.FC<{
   slot: TimeSlot;
@@ -294,7 +357,6 @@ const TimeSlotSection: React.FC<{
     <TimeSlotHeader theme={slot.theme}>
       <TimeSlotTitle>
         <span>{slot.label}</span>
-        <span>{slot.icon}</span>
       </TimeSlotTitle>
     </TimeSlotHeader>
     <MedicineList>
@@ -321,6 +383,59 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [showMedicineDetails, setShowMedicineDetails] = useState(false);
   const [showUploader, setShowUploader] = useState(true);
+
+  useEffect(() => {
+    // Create a script element
+    const script = document.createElement('script');
+    script.src = 'https://translation-plugin.bhashini.co.in/v2/website_translation_utility.js';
+    script.async = true;
+    
+    // Set all required attributes
+    script.setAttribute('data-pos-x', 'right');
+    script.setAttribute('data-pos-y', 'bottom');
+    script.setAttribute('data-pos-z', '9999');
+    script.setAttribute('data-lang', 'en');
+    script.setAttribute('data-theme', 'light');
+    script.setAttribute('data-button-color', '#2563eb');
+    script.setAttribute('data-button-text', 'Translate');
+    script.setAttribute('data-button-position', 'fixed');
+    script.setAttribute('data-button-margin', '20px');
+    script.setAttribute('data-button-size', 'medium');
+    script.setAttribute('data-button-style', 'rounded');
+    
+    // Add to document head
+    document.head.appendChild(script);
+
+    // Add event listeners
+    script.onload = () => {
+      console.log('Bhashini translator widget loaded successfully');
+      // Initialize the widget after a short delay
+      setTimeout(() => {
+        try {
+          // Check if the widget is available
+          if (window.bhashini && typeof window.bhashini.init === 'function') {
+            window.bhashini.init();
+            console.log('Widget initialized successfully');
+          } else {
+            console.error('Bhashini widget not properly loaded');
+          }
+        } catch (error) {
+          console.error('Error initializing Bhashini widget:', error);
+        }
+      }, 1000);
+    };
+
+    script.onerror = (error) => {
+      console.error('Failed to load Bhashini translator widget:', error);
+    };
+
+    return () => {
+      // Remove script on cleanup
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (medicines.length > 0) {
@@ -364,31 +479,25 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
         </div>
       ) : (
         <UploadButton onClick={() => setShowUploader(true)}>
-          <svg
-            style={{ width: '1.25rem', height: '1.25rem' }}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
           Upload New Prescription
         </UploadButton>
       )}
 
       {medicines.length > 0 && (
         <ScheduleContainer>
-          <Header>
-            <Title>Your Daily Medication Schedule</Title>
-            <Subtitle>
-              Click on any medicine to view generic alternatives from Jan Aushadhi , locate nearby Jan Aushadhi stores, and get detailed information.
-            </Subtitle>
-          </Header>
+          <ScheduleHeader>
+            <HeadingContainer>
+              <TitleRow>
+                <h2 className="text-2xl font-bold text-gray-900">Your Daily Medication Schedule</h2>
+                <DisclaimerText>
+                  AI-generated extraction. Always confirm with your doctor.
+                </DisclaimerText>
+              </TitleRow>
+              <Subtitle>
+                Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.
+              </Subtitle>
+            </HeadingContainer>
+          </ScheduleHeader>
           
           <TimeSlotGrid>
             {timeSlots.map((slot) => (
