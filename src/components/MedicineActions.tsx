@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { Store } from '../types/store';
 import { MedicineSearchResult, MedicineSearchResponse } from '../types/medicine';
 import MedicineSearch from './MedicineSearch';
+import { translateText } from '../services/translationService';
+import { Languages } from 'lucide-react';
 
 // Styled Components
 const ActionContainer = styled.div`
@@ -16,20 +18,35 @@ const ActionHeader = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-const MedicineName = styled.h3`
-  font-size: 1.5rem;
+const MedicineNameTab = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+`;
+
+const MedicineNameText = styled.div`
+  font-size: 1.125rem;
   font-weight: 600;
   color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const CloseButton = styled.button`
-  padding: 0.5rem;
+  padding: 0.25rem;
   border-radius: 0.375rem;
   color: #6b7280;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   
   &:hover {
-    background-color: #f3f4f6;
+    background: #e5e7eb;
     color: #111827;
   }
 `;
@@ -69,48 +86,50 @@ const Tab = styled.button<{ $isActive: boolean }>`
 
 const ContentSection = styled.div`
   background: white;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 `;
 
 const SectionHeader = styled.div`
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
   font-weight: 600;
   color: #111827;
+  font-size: 0.875rem;
 `;
 
 const SectionContent = styled.div`
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   color: #111827;
 `;
 
 const InfoGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
 `;
 
 const InfoItem = styled.div`
-  padding: 1rem;
+  padding: 0.5rem;
   background: #f9fafb;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   border: 1px solid #e5e7eb;
 `;
 
 const InfoLabel = styled.div`
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: #374151;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
   font-weight: 500;
 `;
 
 const InfoValue = styled.div`
   color: #111827;
   font-weight: 500;
+  font-size: 0.875rem;
 `;
 
 const WarningBox = styled.div`
@@ -152,6 +171,11 @@ const SearchInput = styled.input`
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   margin-bottom: 1rem;
+  color: #111827;
+  
+  &::placeholder {
+    color: #6b7280;
+  }
   
   &:focus {
     outline: none;
@@ -202,6 +226,60 @@ const PageButton = styled.button<{ $isActive?: boolean }>`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+const ConfidenceBadge = styled.span<{ $confidence: number | undefined }>`
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: ${props => {
+    if (!props.$confidence) return 'bg-gray-500 text-white';
+    if (props.$confidence >= 90) return 'bg-green-600 text-white';
+    if (props.$confidence >= 70) return 'bg-yellow-500 text-white';
+    return 'bg-red-600 text-white';
+  }};
+  font-size: 0.75rem;
+  font-weight: 500;
+`;
+
+const TranslateButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #e5e7eb;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+`;
+
+const LanguageSelect = styled.select`
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+  background-color: white;
+`;
+
+const TranslateContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 `;
 
 interface MedicineActionsProps {
@@ -294,6 +372,86 @@ export default function MedicineActions({
   const [storeError, setStoreError] = useState<string | null>(null);
   const [loadingStores, setLoadingStores] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(() => {
+    const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+    return config.language || 'en';
+  });
+  const [translatedDrugInfo, setTranslatedDrugInfo] = useState<DrugInfo | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translatedLabels, setTranslatedLabels] = useState<{
+    medicineInformation: string;
+    purpose: string;
+    dosageAdministration: string;
+    warnings: string;
+    pregnancyRisk: string;
+    brandName: string;
+    genericName: string;
+    manufacturer: string;
+    activeIngredients: string;
+  }>({
+    medicineInformation: 'Medicine Information',
+    purpose: 'Purpose',
+    dosageAdministration: 'Dosage & Administration',
+    warnings: 'Warnings',
+    pregnancyRisk: 'Pregnancy Risk',
+    brandName: 'Brand Name',
+    genericName: 'Generic Name',
+    manufacturer: 'Manufacturer',
+    activeIngredients: 'Active Ingredients'
+  });
+  const [translatedStores, setTranslatedStores] = useState<StoreLocation[]>([]);
+  const [translatedAlternatives, setTranslatedAlternatives] = useState<MedicineSearchResult[]>([]);
+  const [translatedStoreLabels, setTranslatedStoreLabels] = useState({
+    storeName: 'Store Name',
+    storeCode: 'Store Code',
+    distance: 'Distance',
+    contact: 'Contact',
+    email: 'Email',
+    viewOnMaps: 'View on Google Maps',
+    enterPincode: 'Enter pincode to search stores...',
+    searchingStores: 'Searching nearby stores...',
+    noStoresFound: 'No stores found in this area',
+    previous: 'Previous',
+    next: 'Next'
+  });
+
+  const [translatedAlternativeLabels, setTranslatedAlternativeLabels] = useState({
+    price: 'Price',
+    manufacturer: 'Manufacturer',
+    unitSize: 'Unit Size',
+    type: 'Type',
+    generic: 'Generic',
+    branded: 'Branded',
+    bppiProduct: 'BPPI Product',
+    savings: 'Savings',
+    searchingAlternatives: 'Searching for alternatives...',
+    noAlternativesFound: 'No alternatives found',
+    previous: 'Previous',
+    next: 'Next'
+  });
+
+  const languages = [
+    { code: 'hi', name: 'Hindi' },
+    { code: 'bn', name: 'Bengali' },
+    { code: 'te', name: 'Telugu' },
+    { code: 'ta', name: 'Tamil' },
+    { code: 'mr', name: 'Marathi' },
+    { code: 'gu', name: 'Gujarati' },
+    { code: 'kn', name: 'Kannada' },
+    { code: 'ml', name: 'Malayalam' },
+    { code: 'pa', name: 'Punjabi' },
+    { code: 'or', name: 'Odia' },
+    { code: 'ur', name: 'Urdu' },
+    { code: 'as', name: 'Assamese' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+    { code: 'de', name: 'German' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'zh', name: 'Chinese' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'ru', name: 'Russian' }
+  ];
 
   useEffect(() => {
     console.log('useEffect triggered:', { selectedAction, pinCode, name, currentStorePage });
@@ -307,6 +465,146 @@ export default function MedicineActions({
       handleAlternativesSearch(name);
     }
   }, [selectedAction, pinCode, name, currentStorePage]);
+
+  useEffect(() => {
+    console.log('Language changed to:', currentLanguage);
+    if (currentLanguage && drugInfo) {
+      handleTranslate(currentLanguage);
+    }
+  }, [currentLanguage, drugInfo]);
+
+  useEffect(() => {
+    console.log('Selected action changed to:', selectedAction);
+    if (currentLanguage !== 'en') {
+      handleTranslate(currentLanguage);
+    }
+  }, [selectedAction]);
+
+  useEffect(() => {
+    const translateDrugInfo = async () => {
+      if (!drugInfo || currentLanguage === 'en') {
+        setTranslatedDrugInfo(drugInfo);
+        return;
+      }
+
+      try {
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+        if (!config.googleCloudApiKey) {
+          console.error('Google Cloud API key not configured for translation');
+          setTranslatedDrugInfo(drugInfo);
+          return;
+        }
+
+        // Translate labels
+        const labels = await Promise.all([
+          translateText('Medicine Information', currentLanguage, config),
+          translateText('Purpose', currentLanguage, config),
+          translateText('Dosage & Administration', currentLanguage, config),
+          translateText('Warnings', currentLanguage, config),
+          translateText('Pregnancy Risk', currentLanguage, config),
+          translateText('Brand Name', currentLanguage, config),
+          translateText('Generic Name', currentLanguage, config),
+          translateText('Manufacturer', currentLanguage, config),
+          translateText('Active Ingredients', currentLanguage, config)
+        ]);
+
+        setTranslatedLabels({
+          medicineInformation: labels[0],
+          purpose: labels[1],
+          dosageAdministration: labels[2],
+          warnings: labels[3],
+          pregnancyRisk: labels[4],
+          brandName: labels[5],
+          genericName: labels[6],
+          manufacturer: labels[7],
+          activeIngredients: labels[8]
+        });
+
+        const translatedInfo = {
+          ...drugInfo,
+          brand_name: drugInfo.brand_name ? await translateText(drugInfo.brand_name, currentLanguage, config) : 'N/A',
+          generic_name: drugInfo.generic_name ? await translateText(drugInfo.generic_name, currentLanguage, config) : 'N/A',
+          manufacturer: drugInfo.manufacturer ? await translateText(drugInfo.manufacturer, currentLanguage, config) : 'N/A',
+          active_ingredients: drugInfo.active_ingredients ? await translateText(drugInfo.active_ingredients, currentLanguage, config) : 'N/A',
+          purpose: drugInfo.purpose ? await translateText(drugInfo.purpose, currentLanguage, config) : 'No purpose information available.',
+          dosage_administration: drugInfo.dosage_administration ? await translateText(drugInfo.dosage_administration, currentLanguage, config) : 'No dosage information available.',
+          warnings: drugInfo.warnings ? await translateText(drugInfo.warnings, currentLanguage, config) : undefined,
+          pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, currentLanguage, config) : 'No pregnancy risk information available.'
+        };
+
+        setTranslatedDrugInfo(translatedInfo);
+      } catch (error) {
+        console.error('Error translating drug info:', error);
+        setTranslatedDrugInfo(drugInfo);
+      }
+    };
+
+    translateDrugInfo();
+  }, [drugInfo, currentLanguage]);
+
+  useEffect(() => {
+    const translateLabels = async () => {
+      if (currentLanguage === 'en') {
+        setTranslatedLabels({
+          medicineInformation: 'Medicine Information',
+          purpose: 'Purpose',
+          dosageAdministration: 'Dosage & Administration',
+          warnings: 'Warnings',
+          pregnancyRisk: 'Pregnancy Risk',
+          brandName: 'Brand Name',
+          genericName: 'Generic Name',
+          manufacturer: 'Manufacturer',
+          activeIngredients: 'Active Ingredients'
+        });
+        return;
+      }
+
+      try {
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+        if (!config.googleCloudApiKey) {
+          console.error('Google Cloud API key not configured for translation');
+          return;
+        }
+
+        const labels = await Promise.all([
+          translateText('Medicine Information', currentLanguage, config),
+          translateText('Purpose', currentLanguage, config),
+          translateText('Dosage & Administration', currentLanguage, config),
+          translateText('Warnings', currentLanguage, config),
+          translateText('Pregnancy Risk', currentLanguage, config),
+          translateText('Brand Name', currentLanguage, config),
+          translateText('Generic Name', currentLanguage, config),
+          translateText('Manufacturer', currentLanguage, config),
+          translateText('Active Ingredients', currentLanguage, config)
+        ]);
+
+        setTranslatedLabels({
+          medicineInformation: labels[0],
+          purpose: labels[1],
+          dosageAdministration: labels[2],
+          warnings: labels[3],
+          pregnancyRisk: labels[4],
+          brandName: labels[5],
+          genericName: labels[6],
+          manufacturer: labels[7],
+          activeIngredients: labels[8]
+        });
+      } catch (error) {
+        console.error('Error translating labels:', error);
+      }
+    };
+
+    translateLabels();
+  }, [currentLanguage]);
+
+  useEffect(() => {
+    if (stores.length > 0) {
+      translateStores(stores, currentLanguage);
+    }
+    if (searchResults.length > 0) {
+      translateAlternatives(searchResults, currentLanguage);
+    }
+  }, [currentLanguage, stores, searchResults]);
 
   // Function to clean medicine name by removing dosage and other numbers
   const cleanMedicineName = (name: string): string => {
@@ -511,33 +809,27 @@ export default function MedicineActions({
   };
 
   const renderStores = () => {
-    console.log('Rendering Stores:', {
-      loadingStores,
-      storeError,
-      stores: stores.length,
-      currentStorePage,
-      storesPerPage
-    });
-
     if (loadingStores) {
-      return <LoadingSpinner>Searching nearby stores...</LoadingSpinner>;
+      return <LoadingSpinner>{translatedStoreLabels.searchingStores}</LoadingSpinner>;
     }
 
     if (storeError) {
       return <ErrorMessage>{storeError}</ErrorMessage>;
     }
 
-    if (!stores.length) {
+    const storesToDisplay = translatedStores.length > 0 ? translatedStores : stores;
+
+    if (!storesToDisplay.length) {
       return (
         <div className="space-y-4">
           <SearchInput
             type="text"
-            placeholder="Enter pincode to search stores..."
+            placeholder={translatedStoreLabels.enterPincode}
             value={pinCode}
             onChange={(e) => setPinCode(e.target.value)}
           />
           <div className="text-center text-gray-500 p-4">
-            Enter a pincode to find nearby stores
+            {translatedStoreLabels.noStoresFound}
           </div>
         </div>
       );
@@ -545,14 +837,14 @@ export default function MedicineActions({
 
     const startIndex = (currentStorePage - 1) * storesPerPage;
     const endIndex = startIndex + storesPerPage;
-    const currentStores = stores.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(stores.length / storesPerPage);
+    const currentStores = storesToDisplay.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(storesToDisplay.length / storesPerPage);
 
     return (
       <div className="space-y-4">
         <SearchInput
           type="text"
-          placeholder="Enter pincode to search stores..."
+          placeholder={translatedStoreLabels.enterPincode}
           value={pinCode}
           onChange={(e) => setPinCode(e.target.value)}
         />
@@ -577,20 +869,20 @@ export default function MedicineActions({
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 text-sm"
                 >
-                  View on Google Maps
+                  {translatedStoreLabels.viewOnMaps}
                 </a>
               </div>
             </StoreInfo>
           </StoreCard>
         ))}
 
-        {stores.length > storesPerPage && (
+        {storesToDisplay.length > storesPerPage && (
           <PaginationContainer>
             <PageButton
               onClick={() => setCurrentStorePage(prev => Math.max(prev - 1, 1))}
               disabled={currentStorePage === 1}
             >
-              Previous
+              {translatedStoreLabels.previous}
             </PageButton>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
               <PageButton
@@ -605,10 +897,278 @@ export default function MedicineActions({
               onClick={() => setCurrentStorePage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentStorePage === totalPages}
             >
-              Next
+              {translatedStoreLabels.next}
             </PageButton>
           </PaginationContainer>
         )}
+      </div>
+    );
+  };
+
+  const handleTranslate = async (selectedLanguage: string) => {
+    if (selectedLanguage === 'en') {
+      // Reset to English
+      setTranslatedDrugInfo(null);
+      setTranslatedStores([]);
+      setTranslatedAlternatives([]);
+      setTranslatedLabels({
+        medicineInformation: 'Medicine Information',
+        purpose: 'Purpose',
+        dosageAdministration: 'Dosage & Administration',
+        warnings: 'Warnings',
+        pregnancyRisk: 'Pregnancy Risk',
+        brandName: 'Brand Name',
+        genericName: 'Generic Name',
+        manufacturer: 'Manufacturer',
+        activeIngredients: 'Active Ingredients'
+      });
+      setTranslatedStoreLabels({
+        storeName: 'Store Name',
+        storeCode: 'Store Code',
+        distance: 'Distance',
+        contact: 'Contact',
+        email: 'Email',
+        viewOnMaps: 'View on Google Maps',
+        enterPincode: 'Enter pincode to search stores...',
+        searchingStores: 'Searching nearby stores...',
+        noStoresFound: 'No stores found in this area',
+        previous: 'Previous',
+        next: 'Next'
+      });
+      setTranslatedAlternativeLabels({
+        price: 'Price',
+        manufacturer: 'Manufacturer',
+        unitSize: 'Unit Size',
+        type: 'Type',
+        generic: 'Generic',
+        branded: 'Branded',
+        bppiProduct: 'BPPI Product',
+        savings: 'Savings',
+        searchingAlternatives: 'Searching for alternatives...',
+        noAlternativesFound: 'No alternatives found',
+        previous: 'Previous',
+        next: 'Next'
+      });
+      return;
+    }
+
+    setTranslating(true);
+    try {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+      if (!config.googleCloudApiKey) {
+        alert('Please configure Google Cloud API key in settings first');
+        return;
+      }
+
+      // Translate all content in parallel
+      await Promise.all([
+        // Translate drug info
+        (async () => {
+          if (drugInfo) {
+            const [
+              medicineInfo, purpose, dosageAdmin, warnings, pregnancyRisk,
+              brandName, genericName, mfr, activeIng
+            ] = await Promise.all([
+              translateText('Medicine Information', selectedLanguage, config),
+              translateText('Purpose', selectedLanguage, config),
+              translateText('Dosage & Administration', selectedLanguage, config),
+              translateText('Warnings', selectedLanguage, config),
+              translateText('Pregnancy Risk', selectedLanguage, config),
+              translateText('Brand Name', selectedLanguage, config),
+              translateText('Generic Name', selectedLanguage, config),
+              translateText('Manufacturer', selectedLanguage, config),
+              translateText('Active Ingredients', selectedLanguage, config)
+            ]);
+
+            setTranslatedLabels({
+              medicineInformation: medicineInfo,
+              purpose: purpose,
+              dosageAdministration: dosageAdmin,
+              warnings: warnings,
+              pregnancyRisk: pregnancyRisk,
+              brandName: brandName,
+              genericName: genericName,
+              manufacturer: mfr,
+              activeIngredients: activeIng
+            });
+
+            const translatedInfo = {
+              ...drugInfo,
+              brand_name: drugInfo.brand_name ? await translateText(drugInfo.brand_name, selectedLanguage, config) : 'N/A',
+              generic_name: drugInfo.generic_name ? await translateText(drugInfo.generic_name, selectedLanguage, config) : 'N/A',
+              manufacturer: drugInfo.manufacturer ? await translateText(drugInfo.manufacturer, selectedLanguage, config) : 'N/A',
+              active_ingredients: drugInfo.active_ingredients ? await translateText(drugInfo.active_ingredients, selectedLanguage, config) : 'N/A',
+              purpose: drugInfo.purpose ? await translateText(drugInfo.purpose, selectedLanguage, config) : 'No purpose information available.',
+              dosage_administration: drugInfo.dosage_administration ? await translateText(drugInfo.dosage_administration, selectedLanguage, config) : 'No dosage information available.',
+              warnings: drugInfo.warnings ? await translateText(drugInfo.warnings, selectedLanguage, config) : undefined,
+              pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, selectedLanguage, config) : 'No pregnancy risk information available.'
+            };
+
+            setTranslatedDrugInfo(translatedInfo);
+          }
+        })(),
+
+        // Translate stores
+        (async () => {
+          if (stores.length > 0) {
+            const translatedStores = await Promise.all(stores.map(async (store) => ({
+              ...store,
+              storeName: await translateText(store.storeName, selectedLanguage, config),
+              address: await translateText(store.address, selectedLanguage, config),
+              district: await translateText(store.district, selectedLanguage, config),
+              state: await translateText(store.state, selectedLanguage, config)
+            })));
+
+            setTranslatedStores(translatedStores);
+
+            const [
+              storeName, storeCode, distance, contact, email,
+              viewOnMaps, enterPincode, searchingStores, noStores,
+              prev, next
+            ] = await Promise.all([
+              translateText('Store Name', selectedLanguage, config),
+              translateText('Store Code', selectedLanguage, config),
+              translateText('Distance', selectedLanguage, config),
+              translateText('Contact', selectedLanguage, config),
+              translateText('Email', selectedLanguage, config),
+              translateText('View on Google Maps', selectedLanguage, config),
+              translateText('Enter pincode to search stores...', selectedLanguage, config),
+              translateText('Searching nearby stores...', selectedLanguage, config),
+              translateText('No stores found in this area', selectedLanguage, config),
+              translateText('Previous', selectedLanguage, config),
+              translateText('Next', selectedLanguage, config)
+            ]);
+
+            setTranslatedStoreLabels({
+              storeName,
+              storeCode,
+              distance,
+              contact,
+              email,
+              viewOnMaps,
+              enterPincode,
+              searchingStores,
+              noStoresFound: noStores,
+              previous: prev,
+              next
+            });
+          }
+        })(),
+
+        // Translate alternatives
+        (async () => {
+          if (searchResults.length > 0) {
+            const translatedAlternatives = await Promise.all(searchResults.map(async (alt) => ({
+              ...alt,
+              generic_Name: await translateText(alt.generic_Name, selectedLanguage, config),
+              companyName: alt.companyName ? await translateText(alt.companyName, selectedLanguage, config) : 'N/A',
+              unitSize: alt.unitSize ? await translateText(alt.unitSize, selectedLanguage, config) : 'N/A'
+            })));
+
+            setTranslatedAlternatives(translatedAlternatives);
+
+            const [
+              price, mfr, unitSize, type, generic, branded,
+              bppi, savings, searching, noResults, prev, next
+            ] = await Promise.all([
+              translateText('Price', selectedLanguage, config),
+              translateText('Manufacturer', selectedLanguage, config),
+              translateText('Unit Size', selectedLanguage, config),
+              translateText('Type', selectedLanguage, config),
+              translateText('Generic', selectedLanguage, config),
+              translateText('Branded', selectedLanguage, config),
+              translateText('BPPI Product', selectedLanguage, config),
+              translateText('Savings', selectedLanguage, config),
+              translateText('Searching for alternatives...', selectedLanguage, config),
+              translateText('No alternatives found', selectedLanguage, config),
+              translateText('Previous', selectedLanguage, config),
+              translateText('Next', selectedLanguage, config)
+            ]);
+
+            setTranslatedAlternativeLabels({
+              price,
+              manufacturer: mfr,
+              unitSize,
+              type,
+              generic,
+              branded,
+              bppiProduct: bppi,
+              savings,
+              searchingAlternatives: searching,
+              noAlternativesFound: noResults,
+              previous: prev,
+              next
+            });
+          }
+        })()
+      ]);
+
+    } catch (error) {
+      console.error('Error translating:', error);
+      alert('Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const renderActionContent = () => {
+    return (
+      <div>
+        <TabContainer>
+          <Tab
+            $isActive={selectedAction === 'details'}
+            onClick={() => setSelectedAction('details')}
+          >
+            Details
+          </Tab>
+          <Tab
+            $isActive={selectedAction === 'alternatives'}
+            onClick={() => setSelectedAction('alternatives')}
+          >
+            Alternatives
+          </Tab>
+          <Tab
+            $isActive={selectedAction === 'stores'}
+            onClick={() => setSelectedAction('stores')}
+          >
+            Find Stores
+          </Tab>
+        </TabContainer>
+
+        <TranslateContainer>
+          <LanguageSelect
+            value={currentLanguage}
+            onChange={(e) => {
+              const newLanguage = e.target.value;
+              setCurrentLanguage(newLanguage);
+              handleTranslate(newLanguage);
+            }}
+          >
+            <option value="en">English</option>
+            {languages.map(lang => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
+          </LanguageSelect>
+          <TranslateButton 
+            onClick={() => handleTranslate(currentLanguage)}
+            disabled={currentLanguage === 'en' || translating}
+          >
+            <Languages />
+            {translating ? 'Translating...' : 'Translate'}
+          </TranslateButton>
+        </TranslateContainer>
+
+        {translating && (
+          <div className="mb-4 p-2 bg-blue-50 text-blue-700 rounded-md text-sm">
+            Translating content...
+          </div>
+        )}
+
+        {selectedAction === 'details' && renderDrugInfo()}
+        {selectedAction === 'alternatives' && renderAlternatives()}
+        {selectedAction === 'stores' && renderStores()}
       </div>
     );
   };
@@ -626,133 +1186,151 @@ export default function MedicineActions({
       return <div className="text-center text-gray-500">No drug information available</div>;
     }
 
+    const infoToDisplay = translatedDrugInfo || drugInfo;
+    const labels = translatedLabels;
+
     return (
       <div>
         <ContentSection>
-          <SectionHeader>Medicine Information</SectionHeader>
+          <SectionHeader>{labels.medicineInformation}</SectionHeader>
           <SectionContent>
             <InfoGrid>
               <InfoItem>
-                <InfoLabel>Brand Name</InfoLabel>
-                <InfoValue>{drugInfo.brand_name || 'N/A'}</InfoValue>
+                <InfoLabel>{labels.brandName}</InfoLabel>
+                <InfoValue>{infoToDisplay.brand_name || 'N/A'}</InfoValue>
               </InfoItem>
               <InfoItem>
-                <InfoLabel>Generic Name</InfoLabel>
-                <InfoValue>{drugInfo.generic_name || 'N/A'}</InfoValue>
+                <InfoLabel>{labels.genericName}</InfoLabel>
+                <InfoValue>{infoToDisplay.generic_name || 'N/A'}</InfoValue>
               </InfoItem>
               <InfoItem>
-                <InfoLabel>Manufacturer</InfoLabel>
-                <InfoValue>{drugInfo.manufacturer || 'N/A'}</InfoValue>
+                <InfoLabel>{labels.manufacturer}</InfoLabel>
+                <InfoValue>{infoToDisplay.manufacturer || 'N/A'}</InfoValue>
               </InfoItem>
               <InfoItem>
-                <InfoLabel>Active Ingredients</InfoLabel>
-                <InfoValue>{drugInfo.active_ingredients || 'N/A'}</InfoValue>
+                <InfoLabel>{labels.activeIngredients}</InfoLabel>
+                <InfoValue>{infoToDisplay.active_ingredients || 'N/A'}</InfoValue>
               </InfoItem>
             </InfoGrid>
           </SectionContent>
         </ContentSection>
 
         <ContentSection>
-          <SectionHeader>Purpose</SectionHeader>
+          <SectionHeader>{labels.purpose}</SectionHeader>
           <SectionContent>
-            <p>{drugInfo.purpose || 'No purpose information available.'}</p>
+            <p>{infoToDisplay.purpose || 'No purpose information available.'}</p>
           </SectionContent>
         </ContentSection>
 
         <ContentSection>
-          <SectionHeader>Dosage & Administration</SectionHeader>
+          <SectionHeader>{labels.dosageAdministration}</SectionHeader>
           <SectionContent>
-            <p>{drugInfo.dosage_administration || 'No dosage information available.'}</p>
+            <p>{infoToDisplay.dosage_administration || 'No dosage information available.'}</p>
           </SectionContent>
         </ContentSection>
 
-        {drugInfo.warnings && (
+        {infoToDisplay.warnings && (
           <WarningBox>
-            <strong>⚠️ Warnings:</strong>
-            <p>{drugInfo.warnings}</p>
+            <strong>⚠️ {labels.warnings}:</strong>
+            <p>{infoToDisplay.warnings}</p>
           </WarningBox>
         )}
 
         <ContentSection>
-          <SectionHeader>Pregnancy Risk</SectionHeader>
+          <SectionHeader>{labels.pregnancyRisk}</SectionHeader>
           <SectionContent>
-            <p>{drugInfo.pregnancy_risk || 'No pregnancy risk information available.'}</p>
+            <p>{infoToDisplay.pregnancy_risk || 'No pregnancy risk information available.'}</p>
           </SectionContent>
         </ContentSection>
       </div>
     );
   };
 
-  const renderActionDetails = () => {
-    if (selectedAction === 'details') {
-      if (loadingDrug) {
-        return <LoadingSpinner>Loading drug information...</LoadingSpinner>;
-      }
-
-      if (drugError) {
-        return <ErrorMessage>{drugError}</ErrorMessage>;
-      }
-
-      if (drugInfo) {
-        return (
-          <div>
-            <ContentSection>
-              <SectionHeader>Medicine Information</SectionHeader>
-              <SectionContent>
-                <InfoGrid>
-                  <InfoItem>
-                    <InfoLabel>Brand Name</InfoLabel>
-                    <InfoValue>{drugInfo.brand_name || 'N/A'}</InfoValue>
-                  </InfoItem>
-                  <InfoItem>
-                    <InfoLabel>Generic Name</InfoLabel>
-                    <InfoValue>{drugInfo.generic_name || 'N/A'}</InfoValue>
-                  </InfoItem>
-                  <InfoItem>
-                    <InfoLabel>Manufacturer</InfoLabel>
-                    <InfoValue>{drugInfo.manufacturer || 'N/A'}</InfoValue>
-                  </InfoItem>
-                  <InfoItem>
-                    <InfoLabel>Active Ingredients</InfoLabel>
-                    <InfoValue>{drugInfo.active_ingredients || 'N/A'}</InfoValue>
-                  </InfoItem>
-                </InfoGrid>
-              </SectionContent>
-            </ContentSection>
-
-            <ContentSection>
-              <SectionHeader>Purpose</SectionHeader>
-              <SectionContent>
-                <p>{drugInfo.purpose || 'No purpose information available.'}</p>
-              </SectionContent>
-            </ContentSection>
-
-            <ContentSection>
-              <SectionHeader>Dosage & Administration</SectionHeader>
-              <SectionContent>
-                <p>{drugInfo.dosage_administration || 'No dosage information available.'}</p>
-              </SectionContent>
-            </ContentSection>
-
-            {drugInfo.warnings && (
-              <WarningBox>
-                <strong>⚠️ Warnings:</strong>
-                <p>{drugInfo.warnings}</p>
-              </WarningBox>
-            )}
-
-            <ContentSection>
-              <SectionHeader>Pregnancy Risk</SectionHeader>
-              <SectionContent>
-                <p>{drugInfo.pregnancy_risk || 'No pregnancy risk information available.'}</p>
-              </SectionContent>
-            </ContentSection>
-          </div>
-        );
-      }
+  const renderAlternatives = () => {
+    if (loadingSearch) {
+      return <LoadingSpinner>{translatedAlternativeLabels.searchingAlternatives}</LoadingSpinner>;
     }
 
-    return null;
+    if (searchError) {
+      return <ErrorMessage>{searchError}</ErrorMessage>;
+    }
+
+    const alternativesToDisplay = translatedAlternatives.length > 0 ? translatedAlternatives : searchResults;
+
+    if (!alternativesToDisplay.length) {
+      return <div className="text-center text-gray-500 p-2">{translatedAlternativeLabels.noAlternativesFound}</div>;
+    }
+
+    const alternativesPerPage = 5;
+    const startIndex = (currentPage - 1) * alternativesPerPage;
+    const endIndex = startIndex + alternativesPerPage;
+    const currentAlternatives = alternativesToDisplay.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(alternativesToDisplay.length / alternativesPerPage);
+
+    return (
+      <div className="space-y-2">
+        {currentAlternatives.map((medicine, index) => (
+          <ContentSection key={index}>
+            <SectionHeader>{medicine.generic_Name}</SectionHeader>
+            <SectionContent>
+              <InfoGrid>
+                <InfoItem>
+                  <InfoLabel>{translatedAlternativeLabels.price}</InfoLabel>
+                  <InfoValue>₹{medicine.mrp}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>{translatedAlternativeLabels.manufacturer}</InfoLabel>
+                  <InfoValue>{medicine.companyName || 'N/A'}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>{translatedAlternativeLabels.unitSize}</InfoLabel>
+                  <InfoValue>{medicine.unitSize || 'N/A'}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>{translatedAlternativeLabels.type}</InfoLabel>
+                  <InfoValue>
+                    {medicine.iS_GENERIC === 'true' ? translatedAlternativeLabels.generic : translatedAlternativeLabels.branded}
+                    {medicine.iS_BPPI_PRODUCT === 'true' && translatedAlternativeLabels.bppiProduct}
+                  </InfoValue>
+                </InfoItem>
+              </InfoGrid>
+              {medicine.savingAmount && (
+                <div className="mt-1 text-green-600 text-sm">
+                  {translatedAlternativeLabels.savings}: ₹{medicine.savingAmount}
+                  {medicine.savingsPerc && ` (${medicine.savingsPerc}%)`}
+                </div>
+              )}
+            </SectionContent>
+          </ContentSection>
+        ))}
+
+        {alternativesToDisplay.length > alternativesPerPage && (
+          <PaginationContainer>
+            <PageButton
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              {translatedAlternativeLabels.previous}
+            </PageButton>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <PageButton
+                key={page}
+                $isActive={currentPage === page}
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </PageButton>
+            ))}
+            <PageButton
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              {translatedAlternativeLabels.next}
+            </PageButton>
+          </PaginationContainer>
+        )}
+      </div>
+    );
   };
 
   const handleUploadClick = () => {
@@ -985,137 +1563,134 @@ export default function MedicineActions({
     }
   };
 
-  const renderAlternatives = () => {
-    if (loadingSearch) {
-      return <LoadingSpinner>Searching for alternatives...</LoadingSpinner>;
+  const translateStores = async (stores: StoreLocation[], language: string) => {
+    if (language === 'en') {
+      setTranslatedStores(stores);
+      return;
     }
 
-    if (searchError) {
-      return <ErrorMessage>{searchError}</ErrorMessage>;
+    try {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+      if (!config.googleCloudApiKey) return;
+
+      const translatedStores = await Promise.all(stores.map(async (store) => ({
+        ...store,
+        storeName: await translateText(store.storeName, language, config),
+        address: await translateText(store.address, language, config),
+        district: await translateText(store.district, language, config),
+        state: await translateText(store.state, language, config)
+      })));
+
+      setTranslatedStores(translatedStores);
+
+      // Translate store labels
+      const labels = await Promise.all([
+        translateText('Store Name', language, config),
+        translateText('Store Code', language, config),
+        translateText('Distance', language, config),
+        translateText('Contact', language, config),
+        translateText('Email', language, config),
+        translateText('View on Google Maps', language, config),
+        translateText('Enter pincode to search stores...', language, config),
+        translateText('Searching nearby stores...', language, config),
+        translateText('No stores found in this area', language, config),
+        translateText('Previous', language, config),
+        translateText('Next', language, config)
+      ]);
+
+      setTranslatedStoreLabels({
+        storeName: labels[0],
+        storeCode: labels[1],
+        distance: labels[2],
+        contact: labels[3],
+        email: labels[4],
+        viewOnMaps: labels[5],
+        enterPincode: labels[6],
+        searchingStores: labels[7],
+        noStoresFound: labels[8],
+        previous: labels[9],
+        next: labels[10]
+      });
+    } catch (error) {
+      console.error('Error translating stores:', error);
+    }
+  };
+
+  const translateAlternatives = async (alternatives: MedicineSearchResult[], language: string) => {
+    if (language === 'en') {
+      setTranslatedAlternatives(alternatives);
+      return;
     }
 
-    if (!searchResults.length) {
-      return <div className="text-center text-gray-500 p-4">No alternatives found</div>;
+    try {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+      if (!config.googleCloudApiKey) return;
+
+      const translatedAlternatives = await Promise.all(alternatives.map(async (alt) => ({
+        ...alt,
+        generic_Name: await translateText(alt.generic_Name, language, config),
+        companyName: alt.companyName ? await translateText(alt.companyName, language, config) : 'N/A',
+        unitSize: alt.unitSize ? await translateText(alt.unitSize, language, config) : 'N/A'
+      })));
+
+      setTranslatedAlternatives(translatedAlternatives);
+
+      // Translate alternative labels
+      const labels = await Promise.all([
+        translateText('Price', language, config),
+        translateText('Manufacturer', language, config),
+        translateText('Unit Size', language, config),
+        translateText('Type', language, config),
+        translateText('Generic', language, config),
+        translateText('Branded', language, config),
+        translateText('BPPI Product', language, config),
+        translateText('Savings', language, config),
+        translateText('Searching for alternatives...', language, config),
+        translateText('No alternatives found', language, config),
+        translateText('Previous', language, config),
+        translateText('Next', language, config)
+      ]);
+
+      setTranslatedAlternativeLabels({
+        price: labels[0],
+        manufacturer: labels[1],
+        unitSize: labels[2],
+        type: labels[3],
+        generic: labels[4],
+        branded: labels[5],
+        bppiProduct: labels[6],
+        savings: labels[7],
+        searchingAlternatives: labels[8],
+        noAlternativesFound: labels[9],
+        previous: labels[10],
+        next: labels[11]
+      });
+    } catch (error) {
+      console.error('Error translating alternatives:', error);
     }
-
-    const alternativesPerPage = 5;
-    const startIndex = (currentPage - 1) * alternativesPerPage;
-    const endIndex = startIndex + alternativesPerPage;
-    const currentAlternatives = searchResults.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(searchResults.length / alternativesPerPage);
-
-    console.log('Pagination Debug:', {
-      totalResults: searchResults.length,
-      currentPage,
-      totalPages,
-      startIndex,
-      endIndex,
-      currentAlternativesLength: currentAlternatives.length
-    });
-
-    return (
-      <div className="space-y-4">
-        {currentAlternatives.map((medicine, index) => (
-          <ContentSection key={index}>
-            <SectionHeader>{medicine.generic_Name}</SectionHeader>
-            <SectionContent>
-              <InfoGrid>
-                <InfoItem>
-                  <InfoLabel>Price</InfoLabel>
-                  <InfoValue>₹{medicine.mrp}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Manufacturer</InfoLabel>
-                  <InfoValue>{medicine.companyName || 'N/A'}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Unit Size</InfoLabel>
-                  <InfoValue>{medicine.unitSize || 'N/A'}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Type</InfoLabel>
-                  <InfoValue>
-                    {medicine.iS_GENERIC === 'true' ? 'Generic' : 'Branded'}
-                    {medicine.iS_BPPI_PRODUCT === 'true' && ' (BPPI Product)'}
-                  </InfoValue>
-                </InfoItem>
-              </InfoGrid>
-              {medicine.savingAmount && (
-                <div className="mt-2 text-green-600">
-                  Savings: ₹{medicine.savingAmount}
-                  {medicine.savingsPerc && ` (${medicine.savingsPerc}%)`}
-                </div>
-              )}
-            </SectionContent>
-          </ContentSection>
-        ))}
-
-        {searchResults.length > alternativesPerPage && (
-          <PaginationContainer>
-            <PageButton
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </PageButton>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <PageButton
-                key={page}
-                $isActive={currentPage === page}
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </PageButton>
-            ))}
-            <PageButton
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </PageButton>
-          </PaginationContainer>
-        )}
-      </div>
-    );
   };
 
   return (
     <ActionContainer>
       <ActionHeader>
-        <MedicineName>{name}</MedicineName>
-        {onClose && (
+        <MedicineNameTab>
+          <MedicineNameText>
+            {name}
+            {confidence && (
+              <ConfidenceBadge $confidence={confidence}>
+                {confidence}%
+              </ConfidenceBadge>
+            )}
+          </MedicineNameText>
           <CloseButton onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </CloseButton>
-        )}
+        </MedicineNameTab>
       </ActionHeader>
 
-      <TabContainer>
-        <Tab
-          $isActive={selectedAction === 'details'}
-          onClick={() => setSelectedAction('details')}
-        >
-          Details
-        </Tab>
-        <Tab
-          $isActive={selectedAction === 'alternatives'}
-          onClick={() => setSelectedAction('alternatives')}
-        >
-          Alternatives
-        </Tab>
-        <Tab
-          $isActive={selectedAction === 'stores'}
-          onClick={() => setSelectedAction('stores')}
-        >
-          Find Stores
-        </Tab>
-      </TabContainer>
-
-      {renderActionDetails()}
-      {selectedAction === 'stores' && renderStores()}
-      {selectedAction === 'alternatives' && renderAlternatives()}
+      {renderActionContent()}
     </ActionContainer>
   );
 } 
