@@ -1,6 +1,7 @@
 import { LLMProvider } from '../types/config';
 import { PrescriptionData } from '../types/prescription';
 import * as jose from 'jose';
+import { getApiUrl } from '../config/api';
 
 const SYSTEM_PROMPT = `You are a medical prescription analyzer. Extract structured information from the given prescription text.
 
@@ -172,5 +173,56 @@ function parseAnthropicResponse(data: any): PrescriptionData {
   } catch (error) {
     console.error('Error parsing Anthropic response:', error);
     throw new Error('Failed to parse Anthropic response');
+  }
+}
+
+export async function searchDrugs(name: string) {
+  try {
+    const response = await fetch(`${getApiUrl('SEARCH_DRUGS')}?name=${encodeURIComponent(name)}`);
+    if (!response.ok) {
+      throw new Error('Failed to search drugs');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching drugs:', error);
+    throw error;
+  }
+}
+
+export async function processPrescription(file: File) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(getApiUrl('PROCESS_PRESCRIPTION'), {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to process prescription');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error processing prescription:', error);
+    throw error;
+  }
+}
+
+export async function searchStores(latitude: number, longitude: number) {
+  try {
+    const response = await fetch(
+      `${getApiUrl('SEARCH_STORES')}?latitude=${latitude}&longitude=${longitude}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to search stores');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching stores:', error);
+    throw error;
   }
 } 
