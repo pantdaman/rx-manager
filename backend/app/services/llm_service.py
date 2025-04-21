@@ -9,6 +9,8 @@ from ..models.prescription import PrescriptionData
 load_dotenv()
 
 SYSTEM_PROMPT = """You are a medical prescription analyzer. Extract structured information from the given prescription text.
+
+
 Focus on:
 1. Medicine names
 2. Dosage information

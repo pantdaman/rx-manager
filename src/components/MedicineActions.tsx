@@ -4,7 +4,25 @@ import { Store } from '../types/store';
 import { MedicineSearchResult, MedicineSearchResponse } from '../types/medicine';
 import MedicineSearch from './MedicineSearch';
 import { translateText } from '../services/translationService';
-import { Languages } from 'lucide-react';
+import { Languages, Settings, X } from 'lucide-react';
+import SettingsModal from './SettingsModal';
+import { AppConfig } from '../types/config';
+
+// Types
+interface TranslatedLabels {
+  medicineInformation?: string;
+  purpose?: string;
+  dosageAdministration?: string;
+  warnings?: string;
+  pregnancyRisk?: string;
+  brandName?: string;
+  genericName?: string;
+  manufacturer?: string;
+  activeIngredients?: string;
+  previous?: string;
+  next?: string;
+  [key: string]: string | undefined;
+}
 
 // Styled Components
 const ActionContainer = styled.div`
@@ -28,12 +46,19 @@ const MedicineNameTab = styled.div`
   border: 1px solid #e5e7eb;
   margin-bottom: 1rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  width: 100%;
 `;
 
 const MedicineNameText = styled.div`
   font-size: 1.125rem;
   font-weight: 600;
   color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const ButtonGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -104,6 +129,7 @@ const SectionHeader = styled.div`
 const SectionContent = styled.div`
   padding: 0.5rem 0.75rem;
   color: #111827;
+  font-size: 0.875rem;
 `;
 
 const InfoGrid = styled.div`
@@ -139,6 +165,7 @@ const WarningBox = styled.div`
   padding: 1rem;
   margin: 1rem 0;
   color: #991b1b;
+  font-size: 0.875rem;
 `;
 
 const StoreCard = styled.div`
@@ -282,6 +309,30 @@ const TranslateContainer = styled.div`
   margin-bottom: 1rem;
 `;
 
+const SettingsButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #e5e7eb;
+  }
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+`;
+
 interface MedicineActionsProps {
   name: string;
   dosage: string;
@@ -340,16 +391,16 @@ interface Action {
   type: 'search' | 'store' | 'details' | 'alternatives' | 'stores' | null;
 }
 
-export default function MedicineActions({ 
-  name, 
-  dosage, 
-  duration, 
-  confidence, 
-  frequency, 
-  showStoreLocator, 
+const MedicineActions: React.FC<MedicineActionsProps> = ({
+  name,
+  dosage,
+  duration,
+  confidence,
+  frequency,
+  showStoreLocator,
   onClose
-}: MedicineActionsProps) {
-  const [selectedAction, setSelectedAction] = useState<'search' | 'store' | 'details' | 'alternatives' | 'stores' | null>(null);
+}) => {
+  const [selectedAction, setSelectedAction] = useState<string>('details');
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -372,23 +423,12 @@ export default function MedicineActions({
   const [storeError, setStoreError] = useState<string | null>(null);
   const [loadingStores, setLoadingStores] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState(() => {
-    const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-    return config.language || 'en';
-  });
+  const [currentLanguage, setCurrentLanguage] = useState<string>('en');
+  const [translating, setTranslating] = useState<boolean>(false);
   const [translatedDrugInfo, setTranslatedDrugInfo] = useState<DrugInfo | null>(null);
-  const [translating, setTranslating] = useState(false);
-  const [translatedLabels, setTranslatedLabels] = useState<{
-    medicineInformation: string;
-    purpose: string;
-    dosageAdministration: string;
-    warnings: string;
-    pregnancyRisk: string;
-    brandName: string;
-    genericName: string;
-    manufacturer: string;
-    activeIngredients: string;
-  }>({
+  const [translatedStores, setTranslatedStores] = useState<StoreLocation[]>([]);
+  const [translatedAlternatives, setTranslatedAlternatives] = useState<MedicineSearchResult[]>([]);
+  const [translatedLabels, setTranslatedLabels] = useState<TranslatedLabels>({
     medicineInformation: 'Medicine Information',
     purpose: 'Purpose',
     dosageAdministration: 'Dosage & Administration',
@@ -399,9 +439,7 @@ export default function MedicineActions({
     manufacturer: 'Manufacturer',
     activeIngredients: 'Active Ingredients'
   });
-  const [translatedStores, setTranslatedStores] = useState<StoreLocation[]>([]);
-  const [translatedAlternatives, setTranslatedAlternatives] = useState<MedicineSearchResult[]>([]);
-  const [translatedStoreLabels, setTranslatedStoreLabels] = useState({
+  const [translatedStoreLabels, setTranslatedStoreLabels] = useState<TranslatedLabels>({
     storeName: 'Store Name',
     storeCode: 'Store Code',
     distance: 'Distance',
@@ -414,8 +452,7 @@ export default function MedicineActions({
     previous: 'Previous',
     next: 'Next'
   });
-
-  const [translatedAlternativeLabels, setTranslatedAlternativeLabels] = useState({
+  const [translatedAlternativeLabels, setTranslatedAlternativeLabels] = useState<TranslatedLabels>({
     price: 'Price',
     manufacturer: 'Manufacturer',
     unitSize: 'Unit Size',
@@ -429,6 +466,7 @@ export default function MedicineActions({
     previous: 'Previous',
     next: 'Next'
   });
+  const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const languages = [
     { code: 'hi', name: 'Hindi' },
@@ -1192,7 +1230,23 @@ export default function MedicineActions({
     return (
       <div>
         <ContentSection>
-          <SectionHeader>{labels.medicineInformation}</SectionHeader>
+          <SectionHeader>
+            {labels.medicineInformation}
+            <span className={`ml-2 px-2 py-1 text-xs rounded ${
+              infoToDisplay.source === 'FDA' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {infoToDisplay.source === 'FDA' ? 'FDA Verified' : 'AI Generated'}
+            </span>
+          </SectionHeader>
+          {infoToDisplay.source === 'LLM' && (
+            <div className="mt-2 p-3 bg-yellow-500 border border-green-500 rounded-md">
+              <p className="text-sm text-blue-800">
+                ⚠️ This information is generated by AI. Please consult your healthcare provider to verify all medical information and before making any medical decisions.
+              </p>
+            </div>
+          )}
           <SectionContent>
             <InfoGrid>
               <InfoItem>
@@ -1354,7 +1408,7 @@ export default function MedicineActions({
   // Add log when tab changes
   const handleTabChange = (action: string) => {
     console.log('Tab changed to:', action);
-    setSelectedAction(action as 'search' | 'store' | 'details' | 'alternatives' | 'stores' | null);
+    setSelectedAction(action as 'details' | 'alternatives' | 'stores');
   };
 
   const handleSearch = async () => {
@@ -1670,6 +1724,75 @@ export default function MedicineActions({
     }
   };
 
+  const handleLanguageChange = async (language: string) => {
+    setCurrentLanguage(language);
+    if (language === 'en') {
+      setTranslatedDrugInfo(null);
+      setTranslatedStores([]);
+      setTranslatedAlternatives([]);
+      return;
+    }
+    setTranslating(true);
+    try {
+      await translateContent(language);
+    } catch (error) {
+      console.error('Translation error:', error);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const translateContent = async (language: string) => {
+    if (drugInfo) {
+      const translatedInfo = { ...drugInfo };
+      translatedInfo.brand_name = await translateText(drugInfo.brand_name, language, 'text');
+      translatedInfo.generic_name = await translateText(drugInfo.generic_name, language, 'text');
+      translatedInfo.manufacturer = await translateText(drugInfo.manufacturer, language, 'text');
+      translatedInfo.active_ingredients = await translateText(drugInfo.active_ingredients, language, 'text');
+      translatedInfo.purpose = await translateText(drugInfo.purpose, language, 'text');
+      translatedInfo.dosage_administration = await translateText(drugInfo.dosage_administration, language, 'text');
+      if (drugInfo.warnings) {
+        translatedInfo.warnings = await translateText(drugInfo.warnings, language, 'text');
+      }
+      if (drugInfo.pregnancy_risk) {
+        translatedInfo.pregnancy_risk = await translateText(drugInfo.pregnancy_risk, language, 'text');
+      }
+      setTranslatedDrugInfo(translatedInfo);
+    }
+
+    if (stores.length > 0) {
+      const translatedStoresList = await Promise.all(
+        stores.map(async (store) => ({
+          ...store,
+          name: await translateText(store.name, language, 'text'),
+          address: await translateText(store.address, language, 'text')
+        }))
+      );
+      setTranslatedStores(translatedStoresList);
+    }
+
+    if (searchResults.length > 0) {
+      const translatedAlternativesList = await Promise.all(
+        searchResults.map(async (alt) => ({
+          ...alt,
+          name: await translateText(alt.name, language, 'text'),
+          description: await translateText(alt.description, language, 'text')
+        }))
+      );
+      setTranslatedAlternatives(translatedAlternativesList);
+    }
+  };
+
+  const translateLabels = async (labels: TranslatedLabels, language: string): Promise<TranslatedLabels> => {
+    const translatedLabels: TranslatedLabels = {};
+    for (const [key, value] of Object.entries(labels)) {
+      if (value) {
+        translatedLabels[key] = await translateText(value, language, 'text');
+      }
+    }
+    return translatedLabels;
+  };
+
   return (
     <ActionContainer>
       <ActionHeader>
@@ -1677,20 +1800,31 @@ export default function MedicineActions({
           <MedicineNameText>
             {name}
             {confidence && (
-              <ConfidenceBadge $confidence={confidence}>
-                {confidence}%
-              </ConfidenceBadge>
+              <span className="text-sm font-normal text-gray-500">
+                ({confidence}% confidence)
+              </span>
             )}
           </MedicineNameText>
-          <CloseButton onClick={onClose}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </CloseButton>
+          <ButtonGroup>
+            <CloseButton onClick={onClose}>×</CloseButton>
+          </ButtonGroup>
         </MedicineNameTab>
       </ActionHeader>
 
       {renderActionContent()}
+
+      {showSettings && (
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          onSave={(config: AppConfig) => {
+            localStorage.setItem('rx-manager-config', JSON.stringify(config));
+            setShowSettings(false);
+          }}
+        />
+      )}
     </ActionContainer>
   );
-} 
+};
+
+export default MedicineActions; 

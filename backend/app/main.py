@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 import base64
 from .services.ocr_service import perform_ocr
@@ -24,7 +24,11 @@ app.include_router(drugs_router, prefix="/api/drugs", tags=["drugs"])
 app.include_router(pdf_router, prefix="/api", tags=["pdf"])
 
 @app.post("/api/analyze-prescription")
-async def analyze_prescription_image(file: UploadFile = File(...)):
+async def analyze_prescription_image(
+    file: UploadFile = File(...),
+    ocrProvider: str = Form(default='google-vision'),
+    apiKey: str = Form(default=None)
+):
     """
     Process a prescription image or PDF:
     1. Extract text using OCR or PDF text extraction
@@ -38,8 +42,14 @@ async def analyze_prescription_image(file: UploadFile = File(...)):
         # Determine file type
         is_pdf = file.content_type == 'application/pdf'
         
-        # Extract text
-        text = await perform_ocr(file_base64, is_pdf)
+        # Extract text using specified OCR provider
+        text = await perform_ocr(
+            file_base64,
+            is_pdf=is_pdf,
+            ocr_provider=ocrProvider,
+            api_key=apiKey
+        )
+        
         if not text:
             raise HTTPException(status_code=400, detail="Could not extract text from file")
             

@@ -1,6 +1,11 @@
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM, OEM } from 'tesseract.js';
 import { OCRProvider } from '../types/config';
 import * as jose from 'jose';
+
+export interface OCRResult {
+  text: string;
+  confidence: number;
+}
 
 export async function performOCR(file: File, provider: OCRProvider, serviceAccountKey?: string): Promise<string> {
   switch (provider) {
@@ -19,6 +24,31 @@ async function performTesseractOCR(file: File): Promise<string> {
   const worker = await createWorker();
   
   try {
+    try {
+      // Try to initialize with Hindi language support
+      await worker.loadLanguage('eng+hin');
+      await worker.initialize('eng+hin');
+    } catch (error) {
+      console.error('Error loading Hindi language support:', error);
+      // Fallback to English only
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      throw new Error(
+        'Hindi language support is not available. To enable Hindi text recognition:\n' +
+        '1. Download the Hindi language data from https://github.com/tesseract-ocr/tessdata/blob/main/hin.traineddata\n' +
+        '2. Place it in your Tesseract language data directory\n' +
+        'For now, falling back to English-only recognition.'
+      );
+    }
+    
+    // Configure Tesseract for better text recognition
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.AUTO,
+      tessedit_ocr_engine_mode: OEM.LSTM_ONLY,
+      preserve_interword_spaces: '1',
+    });
+    
+    // Perform OCR
     const { data: { text } } = await worker.recognize(imageUrl);
     return text;
   } finally {

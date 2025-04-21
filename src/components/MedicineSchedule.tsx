@@ -3,12 +3,12 @@ import styled from 'styled-components';
 import { Medicine, PrescriptionData } from '../types/prescription';
 import MedicineActions from './MedicineActions';
 import PrescriptionUploader from './PrescriptionUploader';
-
-declare global {
-  interface Window {
-    bhashini: any;
-  }
-}
+import { Settings, Sun, Moon, Sunrise, Sunset, Upload, X, Check, AlertCircle, Clock, Calendar, Pill, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import SettingsModal from './SettingsModal';
+import { AppConfig } from '../types/config';
+import TranslationDropdown from './TranslationDropdown';
+import { translateText } from '../services/translationService';
 
 interface MedicineScheduleProps {
   medicines: Medicine[];
@@ -352,90 +352,115 @@ const TimeSlotSection: React.FC<{
   medicines: Medicine[];
   selectedMedicine: Medicine | null;
   onMedicineClick: (medicine: Medicine) => void;
-}> = ({ slot, medicines, selectedMedicine, onMedicineClick }) => (
-  <TimeSlotContainer theme={slot.theme}>
-    <TimeSlotHeader theme={slot.theme}>
-      <TimeSlotTitle>
-        <span>{slot.label}</span>
-      </TimeSlotTitle>
-    </TimeSlotHeader>
-    <MedicineList>
-      {medicines.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#6b7280' }}>
-          No medication
-        </div>
-      ) : (
-        medicines.map((medicine, index) => (
-          <MedicineCard
-            key={`${medicine.name}-${index}`}
-            medicine={medicine}
-            isSelected={selectedMedicine?.name === medicine.name}
-            onClick={() => onMedicineClick(medicine)}
-            theme={slot.theme}
-          />
-        ))
-      )}
-    </MedicineList>
-  </TimeSlotContainer>
-);
+}> = ({ slot, medicines, selectedMedicine, onMedicineClick }) => {
+  const getTimeSlotIcon = (id: string) => {
+    switch (id) {
+      case 'morning':
+        return <Sunrise size={20} className="mr-2" />;
+      case 'afternoon':
+        return <Sun size={20} className="mr-2" />;
+      case 'evening':
+        return <Sunset size={20} className="mr-2" />;
+      case 'night':
+        return <Moon size={20} className="mr-2" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <TimeSlotContainer theme={slot.theme}>
+      <TimeSlotHeader theme={slot.theme}>
+        <TimeSlotTitle>
+          {getTimeSlotIcon(slot.id)}
+          {slot.label}
+        </TimeSlotTitle>
+      </TimeSlotHeader>
+      <MedicineList>
+        {medicines.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#6b7280' }}>
+            No medication
+          </div>
+        ) : (
+          medicines.map((medicine, index) => (
+            <MedicineCard
+              key={`${medicine.name}-${index}`}
+              medicine={medicine}
+              isSelected={selectedMedicine?.name === medicine.name}
+              onClick={() => onMedicineClick(medicine)}
+              theme={slot.theme}
+            />
+          ))
+        )}
+      </MedicineList>
+    </TimeSlotContainer>
+  );
+};
+
+const SettingsButton = styled.button`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 1000;
+
+  &:hover {
+    background: #f3f4f6;
+    transform: scale(1.05);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: #4b5563;
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
 
 const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUploadComplete }) => {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [showMedicineDetails, setShowMedicineDetails] = useState(false);
   const [showUploader, setShowUploader] = useState(true);
-
-  useEffect(() => {
-    // Create a script element
-    const script = document.createElement('script');
-    script.src = 'https://translation-plugin.bhashini.co.in/v2/website_translation_utility.js';
-    script.async = true;
-    
-    // Set all required attributes
-    script.setAttribute('data-pos-x', 'right');
-    script.setAttribute('data-pos-y', 'bottom');
-    script.setAttribute('data-pos-z', '9999');
-    script.setAttribute('data-lang', 'en');
-    script.setAttribute('data-theme', 'light');
-    script.setAttribute('data-button-color', '#2563eb');
-    script.setAttribute('data-button-text', 'Translate');
-    script.setAttribute('data-button-position', 'fixed');
-    script.setAttribute('data-button-margin', '20px');
-    script.setAttribute('data-button-size', 'medium');
-    script.setAttribute('data-button-style', 'rounded');
-    
-    // Add to document head
-    document.head.appendChild(script);
-
-    // Add event listeners
-    script.onload = () => {
-      console.log('Bhashini translator widget loaded successfully');
-      // Initialize the widget after a short delay
-      setTimeout(() => {
-        try {
-          // Check if the widget is available
-          if (window.bhashini && typeof window.bhashini.init === 'function') {
-            window.bhashini.init();
-            console.log('Widget initialized successfully');
-          } else {
-            console.error('Bhashini widget not properly loaded');
-          }
-        } catch (error) {
-          console.error('Error initializing Bhashini widget:', error);
-        }
-      }, 1000);
-    };
-
-    script.onerror = (error) => {
-      console.error('Failed to load Bhashini translator widget:', error);
-    };
-
-    return () => {
-      // Remove script on cleanup
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, []);
+  const [showSettings, setShowSettings] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [translatedMedicines, setTranslatedMedicines] = useState<Medicine[]>([]);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [translatedLabels, setTranslatedLabels] = useState<{
+    morning: string;
+    afternoon: string;
+    evening: string;
+    night: string;
+    uploadNew: string;
+    medicineSchedule: string;
+    personalizedSchedule: string;
+    aiGenerated: string;
+    viewDetails: string;
+  }>({
+    morning: 'Morning',
+    afternoon: 'Afternoon',
+    evening: 'Evening',
+    night: 'Night',
+    uploadNew: 'Upload New Prescription',
+    medicineSchedule: 'Medicine Schedule',
+    personalizedSchedule: 'Your personalized medicine schedule based on your prescription',
+    aiGenerated: 'AI-generated extraction. Always confirm with your doctor.',
+    viewDetails: 'Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.'
+  });
 
   useEffect(() => {
     if (medicines.length > 0) {
@@ -443,11 +468,119 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     }
   }, [medicines]);
 
+  useEffect(() => {
+    if (currentLanguage !== 'en' && medicines.length > 0) {
+      translateMedicines();
+    } else {
+      setTranslatedMedicines(medicines);
+      setTranslationError(null);
+    }
+  }, [currentLanguage, medicines]);
+
+  useEffect(() => {
+    const translateLabels = async () => {
+      if (currentLanguage === 'en') {
+        setTranslatedLabels({
+          morning: 'Morning',
+          afternoon: 'Afternoon',
+          evening: 'Evening',
+          night: 'Night',
+          uploadNew: 'Upload New Prescription',
+          medicineSchedule: 'Medicine Schedule',
+          personalizedSchedule: 'Your personalized medicine schedule based on your prescription',
+          aiGenerated: 'AI-generated extraction. Always confirm with your doctor.',
+          viewDetails: 'Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.'
+        });
+        return;
+      }
+
+      try {
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+        if (!config.googleCloudApiKey) {
+          setTranslationError('Please configure Google Cloud API key in settings to enable translation');
+          return;
+        }
+
+        const labels = await Promise.all([
+          translateText('Morning', currentLanguage, config),
+          translateText('Afternoon', currentLanguage, config),
+          translateText('Evening', currentLanguage, config),
+          translateText('Night', currentLanguage, config),
+          translateText('Upload New Prescription', currentLanguage, config),
+          translateText('Medicine Schedule', currentLanguage, config),
+          translateText('Your personalized medicine schedule based on your prescription', currentLanguage, config),
+          translateText('AI-generated extraction. Always confirm with your doctor.', currentLanguage, config),
+          translateText('Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.', currentLanguage, config)
+        ]);
+
+        setTranslatedLabels({
+          morning: labels[0],
+          afternoon: labels[1],
+          evening: labels[2],
+          night: labels[3],
+          uploadNew: labels[4],
+          medicineSchedule: labels[5],
+          personalizedSchedule: labels[6],
+          aiGenerated: labels[7],
+          viewDetails: labels[8]
+        });
+      } catch (error) {
+        console.error('Error translating labels:', error);
+        setTranslationError('Failed to translate labels. Please check your API configuration.');
+      }
+    };
+
+    translateLabels();
+  }, [currentLanguage]);
+
+  const translateMedicines = async () => {
+    try {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+      
+      // Check if Google Cloud API key is configured
+      if (!config.googleCloudApiKey) {
+        setTranslationError('Please configure Google Cloud API key in settings to enable translation');
+        setTranslatedMedicines(medicines);
+        return;
+      }
+
+      setTranslationError(null);
+      const translated = await Promise.all(
+        medicines.map(async (medicine) => {
+          try {
+            return {
+              ...medicine,
+              name: await translateText(medicine.name, currentLanguage, config),
+              dosage: await translateText(medicine.dosage, currentLanguage, config),
+              duration: await translateText(medicine.duration, currentLanguage, config),
+              specialInstructions: medicine.specialInstructions 
+                ? await translateText(medicine.specialInstructions, currentLanguage, config)
+                : undefined
+            };
+          } catch (error) {
+            console.error(`Failed to translate medicine ${medicine.name}:`, error);
+            // Return original medicine if translation fails
+            return medicine;
+          }
+        })
+      );
+      setTranslatedMedicines(translated);
+    } catch (error) {
+      console.error('Translation error:', error);
+      setTranslationError('Failed to translate medicines. Please check your API configuration.');
+      setTranslatedMedicines(medicines);
+    }
+  };
+
   const handleUploadComplete = (data: PrescriptionData) => {
     if (onUploadComplete) {
       onUploadComplete(data);
     }
     setShowUploader(false);
+  };
+
+  const handleSaveSettings = (config: AppConfig) => {
+    localStorage.setItem('rx-manager-config', JSON.stringify(config));
   };
 
   const groupedMedicines = medicines.reduce((acc, medicine) => {
@@ -471,15 +604,25 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     setShowMedicineDetails(true);
   };
 
+  const handleLanguageChange = async (languageCode: string) => {
+    setCurrentLanguage(languageCode);
+  };
+
   return (
     <Container>
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSave={handleSaveSettings}
+      />
+
       {showUploader ? (
         <div style={{ background: 'white', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid #e5e7eb' }}>
           <PrescriptionUploader onUploadComplete={handleUploadComplete} />
         </div>
       ) : (
         <UploadButton onClick={() => setShowUploader(true)}>
-          Upload New Prescription
+          {translatedLabels.uploadNew}
         </UploadButton>
       )}
 
@@ -488,13 +631,24 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           <ScheduleHeader>
             <HeadingContainer>
               <TitleRow>
-                <h2 className="text-2xl font-bold text-gray-900">Your Daily Medication Schedule</h2>
-                <DisclaimerText>
-                  AI-generated extraction. Always confirm with your doctor.
-                </DisclaimerText>
+                <h2 className="text-2xl font-bold text-gray-900">{translatedLabels.medicineSchedule}</h2>
+                <HeaderActions>
+                  <TranslationDropdown
+                    onLanguageChange={handleLanguageChange}
+                    currentLanguage={currentLanguage}
+                  />
+                  <DisclaimerText>
+                    {translatedLabels.aiGenerated}
+                  </DisclaimerText>
+                </HeaderActions>
               </TitleRow>
+              {translationError && (
+                <div className="mt-2 p-2 bg-red-50 text-red-600 rounded-md text-sm">
+                  {translationError}
+                </div>
+              )}
               <Subtitle>
-                Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.
+                {translatedLabels.viewDetails}
               </Subtitle>
             </HeadingContainer>
           </ScheduleHeader>
@@ -503,8 +657,11 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
             {timeSlots.map((slot) => (
               <TimeSlotSection
                 key={slot.id}
-                slot={slot}
-                medicines={groupedMedicines[slot.id]}
+                slot={{
+                  ...slot,
+                  label: translatedLabels[slot.id as keyof typeof translatedLabels]
+                }}
+                medicines={translatedMedicines.filter(medicine => medicine.frequency[slot.id])}
                 selectedMedicine={selectedMedicine}
                 onMedicineClick={handleMedicineClick}
               />

@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import { AppConfig, DEFAULT_CONFIG, OCRProvider, LLMProvider } from '../../types/config';
 
 export default function ConfigPage() {
-  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<AppConfig>({
+    ...DEFAULT_CONFIG,
+    apiKeys: {
+      googleCloud: { apiKey: '', projectId: '' },
+      openai: '',
+      anthropic: ''
+    }
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
 
@@ -12,7 +19,19 @@ export default function ConfigPage() {
     // Load saved config from localStorage
     const savedConfig = localStorage.getItem('rx-manager-config');
     if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
+      const parsedConfig = JSON.parse(savedConfig);
+      setConfig({
+        ...DEFAULT_CONFIG,
+        ...parsedConfig,
+        apiKeys: {
+          googleCloud: { 
+            apiKey: parsedConfig.apiKeys?.googleCloud?.apiKey || '', 
+            projectId: parsedConfig.apiKeys?.googleCloud?.projectId || '' 
+          },
+          openai: parsedConfig.apiKeys?.openai || '',
+          anthropic: parsedConfig.apiKeys?.anthropic || ''
+        }
+      });
     }
   }, []);
 
@@ -30,19 +49,16 @@ export default function ConfigPage() {
   };
 
   const handleGoogleCloudConfigChange = (field: 'apiKey' | 'projectId', value: string) => {
-    setConfig(prev => {
-      const newConfig = {
-        ...prev,
-        apiKeys: {
-          ...prev.apiKeys,
-          googleCloud: {
-            ...(prev.apiKeys.googleCloud || { apiKey: '', projectId: '' }),
-            [field]: value
-          }
+    setConfig(prev => ({
+      ...prev,
+      apiKeys: {
+        ...prev.apiKeys,
+        googleCloud: {
+          ...prev.apiKeys.googleCloud,
+          [field]: value
         }
-      };
-      return newConfig as AppConfig;
-    });
+      }
+    }));
   };
 
   const handleApiKeyChange = (provider: 'openai' | 'anthropic', value: string) => {
@@ -98,12 +114,12 @@ export default function ConfigPage() {
                 <input
                   type="radio"
                   name="llm-provider"
-                  value="google-vertex"
-                  checked={config.llmProvider === 'google-vertex'}
+                  value="google"
+                  checked={config.llmProvider === 'google'}
                   onChange={(e) => setConfig(prev => ({ ...prev, llmProvider: e.target.value as LLMProvider }))}
                   className="mr-2"
                 />
-                Google Gemini
+                Google Vertex AI (Gemini Pro)
               </label>
               <label className="block">
                 <input
@@ -143,7 +159,7 @@ export default function ConfigPage() {
                   </label>
                   <input
                     type="text"
-                    value={config.apiKeys.googleCloud?.projectId || ''}
+                    value={config.apiKeys.googleCloud.projectId}
                     onChange={(e) => handleGoogleCloudConfigChange('projectId', e.target.value)}
                     className="w-full px-3 py-2 border rounded-md"
                     placeholder="Enter your Google Cloud Project ID"
@@ -155,7 +171,7 @@ export default function ConfigPage() {
                   </label>
                   <input
                     type="password"
-                    value={config.apiKeys.googleCloud?.apiKey || ''}
+                    value={config.apiKeys.googleCloud.apiKey}
                     onChange={(e) => handleGoogleCloudConfigChange('apiKey', e.target.value)}
                     className="w-full px-3 py-2 border rounded-md"
                     placeholder="Enter your Gemini API key from Google AI Studio"
@@ -167,46 +183,47 @@ export default function ConfigPage() {
               </div>
 
               {/* OpenAI Configuration */}
-              {config.llmProvider === 'openai' && (
-                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900">OpenAI Configuration</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      API Key
-                    </label>
-                    <input
-                      type="password"
-                      value={config.apiKeys.openai || ''}
-                      onChange={(e) => handleApiKeyChange('openai', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                      placeholder="Enter your OpenAI API key"
-                    />
-                  </div>
+              <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900">OpenAI Configuration</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={config.apiKeys.openai}
+                    onChange={(e) => handleApiKeyChange('openai', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Enter your OpenAI API key"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get this from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">OpenAI Dashboard</a>
+                  </p>
                 </div>
-              )}
+              </div>
 
               {/* Anthropic Configuration */}
-              {config.llmProvider === 'anthropic' && (
-                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900">Anthropic Configuration</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      API Key
-                    </label>
-                    <input
-                      type="password"
-                      value={config.apiKeys.anthropic || ''}
-                      onChange={(e) => handleApiKeyChange('anthropic', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                      placeholder="Enter your Anthropic API key"
-                    />
-                  </div>
+              <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900">Anthropic Configuration</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={config.apiKeys.anthropic}
+                    onChange={(e) => handleApiKeyChange('anthropic', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Enter your Anthropic API key"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get this from <a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Anthropic Console</a>
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* Save Button */}
           <div className="flex justify-end">
             <button
               onClick={handleSave}

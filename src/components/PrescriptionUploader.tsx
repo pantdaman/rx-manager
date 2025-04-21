@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { PrescriptionData } from '../types/prescription';
+import styled from 'styled-components';
 
 interface PrescriptionUploaderProps {
   onUploadComplete: (data: PrescriptionData) => void;
@@ -18,8 +19,20 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
     setError(null);
 
     try {
+      // Get user configuration
+      const configStr = localStorage.getItem('rx-manager-config');
+      const config = configStr ? JSON.parse(configStr) : null;
+
+      if (!config) {
+        throw new Error('Please configure OCR and LLM providers in the settings');
+      }
+
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('ocrProvider', config.ocrProvider);
+      if (config.ocrProvider === 'google-vision' && config.apiKeys.google) {
+        formData.append('apiKey', config.apiKeys.google);
+      }
 
       const response = await fetch('http://localhost:8002/api/analyze-prescription', {
         method: 'POST',
@@ -27,7 +40,8 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze prescription');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to analyze prescription');
       }
 
       const data = await response.json();
