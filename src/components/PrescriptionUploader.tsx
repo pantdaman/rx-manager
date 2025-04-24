@@ -42,7 +42,7 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
         formData.append('apiKey', visionApiKey || '');
       }
 
-      const response = await fetch('http://localhost:8002/api/analyze-prescription', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analyze-prescription`, {
         method: 'POST',
         body: formData,
       });

@@ -8,7 +8,7 @@ export async function GET(
     // First try the backend service
     try {
       const backendResponse = await fetch(
-        `http://localhost:8002/api/drugs/search/${encodeURIComponent(params.name)}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/drugs/search/${encodeURIComponent(params.name)}`
       );
       
       if (backendResponse.ok) {

@@ -77,7 +77,7 @@ export default function Sidebar({ onUploadComplete }: SidebarProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8002/api/analyze-prescription', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analyze-prescription`, {
         method: 'POST',
         body: formData,
       });
