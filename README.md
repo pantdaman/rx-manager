@@ -29,8 +29,18 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The application can be deployed using any static site hosting service that supports Next.js applications. Some popular options include:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Netlify](https://www.netlify.com/)
+- [AWS Amplify](https://aws.amazon.com/amplify/)
+- [GitHub Pages](https://pages.github.com/)
+
+For production deployment, make sure to set up the following environment variables:
+
+```bash
+NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=your_google_cloud_translation_api_key
+NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key
+NEXT_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_api_key
+```
