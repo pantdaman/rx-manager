@@ -30,7 +30,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'CORS_ORIGINS=https://rx-manager-frontend-xxxxx-uc.a.run.app'
+      - 'CORS_ORIGINS=https://rx-manager-frontend-193388977136.us-central1.run.app'
 
   # Deploy frontend container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -47,7 +47,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-xxxxx-uc.a.run.app'
+      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app'
 
 images:
   - 'gcr.io/$PROJECT_ID/rx-manager-frontend:$COMMIT_SHA'
