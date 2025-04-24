@@ -19,19 +19,27 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
     setError(null);
 
     try {
-      // Get user configuration
+      // Get user configuration from localStorage
       const configStr = localStorage.getItem('rx-manager-config');
       const config = configStr ? JSON.parse(configStr) : null;
 
-      if (!config) {
-        throw new Error('Please configure OCR and LLM providers in the settings');
-      }
+      // Log the source of API keys
+      console.log('API Key Sources:', {
+        visionApiKey: {
+          fromLocalStorage: config?.apiKeys?.googleCloud?.visionApiKey || 'Not set',
+          fromEnv: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY || 'Not set',
+          using: config?.apiKeys?.googleCloud?.visionApiKey ? 'LocalStorage' : 'Environment'
+        }
+      });
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('ocrProvider', config.ocrProvider);
-      if (config.ocrProvider === 'google-vision' && config.apiKeys.google) {
-        formData.append('apiKey', config.apiKeys.google);
+      formData.append('ocrProvider', config?.ocrProvider || 'google-vision');
+      
+      // Use localStorage key or fallback to env variable
+      const visionApiKey = config?.apiKeys?.googleCloud?.visionApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY;
+      if (config?.ocrProvider === 'google-vision') {
+        formData.append('apiKey', visionApiKey || '');
       }
 
       const response = await fetch('http://localhost:8002/api/analyze-prescription', {

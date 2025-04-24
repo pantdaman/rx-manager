@@ -495,9 +495,21 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
       }
 
       try {
-        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-        if (!config.googleCloudApiKey) {
-          setTranslationError('Please configure Google Cloud API key in settings to enable translation');
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+        
+        // Debug check for environment variables
+        console.log('All env vars:', {
+          translationKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY,
+          visionKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY,
+          geminiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY
+        });
+        
+        // Check for API key in both config and environment variables
+        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+        console.log("hasApiKey", hasApiKey)
+        console.log("process.env.NEXT_PUBLIC_GOOGLE_TRANSLATION_API_KEY", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
+        if (!hasApiKey) {
+          setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
           return;
         }
 
@@ -535,11 +547,14 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
 
   const translateMedicines = async () => {
     try {
-      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
       
-      // Check if Google Cloud API key is configured
-      if (!config.googleCloudApiKey) {
-        setTranslationError('Please configure Google Cloud API key in settings to enable translation');
+      // Check for API key in both config and environment variables
+      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+      console.log("1hasApiKey", hasApiKey)
+      console.log("1process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
+      if (!hasApiKey) {
+        setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
         setTranslatedMedicines(medicines);
         return;
       }

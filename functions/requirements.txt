@@ -1,6 +1,1 @@
-firebase-functions==0.1.1
-firebase-admin==6.2.0
-google-cloud-vision==3.4.4
-google-cloud-translate==3.11.3
-functions-framework==3.4.0
-Flask==2.3.3
+firebase_functions~=0.1.0

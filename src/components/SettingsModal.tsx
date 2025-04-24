@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { AppConfig, DEFAULT_CONFIG } from '../types/config';
+import { AppConfig, DEFAULT_CONFIG, OCRProvider, LLMProvider } from '../types/config';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -117,27 +117,74 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onSave,
 }) => {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [showApiKeys, setShowApiKeys] = useState(false);
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('rx-manager-config');
+    const savedConfig = localStorage.getItem('appConfig');
     if (savedConfig) {
       setConfig(JSON.parse(savedConfig));
+    } else {
+      // Use environment variables as fallbacks
+      setConfig({
+        ...DEFAULT_CONFIG,
+        apiKeys: {
+          googleCloud: {
+            visionApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY || '',
+            translationApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY || '',
+            geminiApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY || ''
+          },
+          openai: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+          anthropic: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || ''
+        }
+      });
     }
   }, []);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = () => {
+    localStorage.setItem('appConfig', JSON.stringify(config));
     onSave(config);
     onClose();
   };
 
-  const handleGoogleCloudConfigChange = (field: 'apiKey' | 'projectId', value: string) => {
+  const handleProviderChange = (provider: OCRProvider | LLMProvider, type: 'ocr' | 'llm') => {
     setConfig(prev => ({
       ...prev,
-      googleCloudApiKey: field === 'apiKey' ? value : prev.googleCloudApiKey,
-      googleCloudProjectId: field === 'projectId' ? value : prev.googleCloudProjectId
+      ...(type === 'ocr' ? { ocrProvider: provider as OCRProvider } : { llmProvider: provider as LLMProvider })
+    }));
+  };
+
+  const handleGoogleCloudConfigChange = (field: 'visionApiKey' | 'translationApiKey' | 'geminiApiKey', value: string) => {
+    setConfig(prev => ({
+      ...prev,
+      apiKeys: {
+        ...prev.apiKeys,
+        googleCloud: {
+          ...prev.apiKeys.googleCloud,
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  const handleOpenAIConfigChange = (value: string) => {
+    setConfig(prev => ({
+      ...prev,
+      apiKeys: {
+        ...prev.apiKeys,
+        openai: value
+      }
+    }));
+  };
+
+  const handleAnthropicConfigChange = (value: string) => {
+    setConfig(prev => ({
+      ...prev,
+      apiKeys: {
+        ...prev.apiKeys,
+        anthropic: value
+      }
     }));
   };
 
@@ -148,18 +195,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <ModalTitle>API Settings</ModalTitle>
           <CloseButton onClick={onClose}>×</CloseButton>
         </ModalHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSave}>
           <FormGroup>
             <Label htmlFor="ocrProvider">OCR Provider</Label>
             <Select
               id="ocrProvider"
               value={config.ocrProvider}
-              onChange={(e) => setConfig(prev => ({ ...prev, ocrProvider: e.target.value as 'google' | 'azure' | 'tesseract' }))}
+              onChange={(e) => handleProviderChange(e.target.value as OCRProvider, 'ocr')}
             >
               <option value="tesseract">Tesseract.js (Free, runs locally)</option>
-              <option value="google">Google Cloud Vision API (Paid, more accurate)</option>
-              <option value="azure">Azure Computer Vision API</option>
+              <option value="google-vision">Google Cloud Vision API (Paid, more accurate)</option>
             </Select>
+          </FormGroup>
+
+          {config.ocrProvider === 'google-vision' && (
+            <FormGroup>
+              <Label htmlFor="visionApiKey">Google Vision API Key</Label>
+              <Input
+                type="password"
+                id="visionApiKey"
+                value={config.apiKeys.googleCloud.visionApiKey || ''}
+                onChange={(e) => handleGoogleCloudConfigChange('visionApiKey', e.target.value)}
+                placeholder="Enter Google Vision API key"
+              />
+            </FormGroup>
+          )}
+
+          <FormGroup>
+            <Label htmlFor="translationApiKey">Google Translation API Key</Label>
+            <Input
+              type="password"
+              id="translationApiKey"
+              value={config.apiKeys.googleCloud.translationApiKey || ''}
+              onChange={(e) => handleGoogleCloudConfigChange('translationApiKey', e.target.value)}
+              placeholder="Enter Google Translation API key"
+            />
           </FormGroup>
 
           <FormGroup>
@@ -167,7 +237,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <Select
               id="llmProvider"
               value={config.llmProvider}
-              onChange={(e) => setConfig(prev => ({ ...prev, llmProvider: e.target.value as 'google' | 'openai' | 'anthropic' }))}
+              onChange={(e) => handleProviderChange(e.target.value as LLMProvider, 'llm')}
             >
               <option value="google">Google Gemini</option>
               <option value="openai">OpenAI GPT-4</option>
@@ -175,27 +245,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </Select>
           </FormGroup>
 
-          <FormGroup>
-            <Label htmlFor="googleCloudApiKey">Google Cloud API Key</Label>
-            <Input
-              type="password"
-              id="googleCloudApiKey"
-              value={config.googleCloudApiKey || ''}
-              onChange={(e) => handleGoogleCloudConfigChange('apiKey', e.target.value)}
-              placeholder="Enter Google Cloud API key"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="googleCloudProjectId">Google Cloud Project ID</Label>
-            <Input
-              type="text"
-              id="googleCloudProjectId"
-              value={config.googleCloudProjectId || ''}
-              onChange={(e) => handleGoogleCloudConfigChange('projectId', e.target.value)}
-              placeholder="Enter Google Cloud Project ID"
-            />
-          </FormGroup>
+          {config.llmProvider === 'google' && (
+            <FormGroup>
+              <Label htmlFor="geminiApiKey">Google Gemini API Key</Label>
+              <Input
+                type="password"
+                id="geminiApiKey"
+                value={config.apiKeys.googleCloud.geminiApiKey || ''}
+                onChange={(e) => handleGoogleCloudConfigChange('geminiApiKey', e.target.value)}
+                placeholder="Enter Google Gemini API key"
+              />
+            </FormGroup>
+          )}
 
           {config.llmProvider === 'openai' && (
             <FormGroup>
@@ -203,8 +264,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <Input
                 type="password"
                 id="openaiApiKey"
-                value={config.openaiApiKey || ''}
-                onChange={(e) => setConfig(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                value={config.apiKeys.openai || ''}
+                onChange={(e) => handleOpenAIConfigChange(e.target.value)}
                 placeholder="Enter OpenAI API key"
               />
             </FormGroup>
@@ -216,8 +277,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <Input
                 type="password"
                 id="anthropicApiKey"
-                value={config.anthropicApiKey || ''}
-                onChange={(e) => setConfig(prev => ({ ...prev, anthropicApiKey: e.target.value }))}
+                value={config.apiKeys.anthropic || ''}
+                onChange={(e) => handleAnthropicConfigChange(e.target.value)}
                 placeholder="Enter Anthropic API key"
               />
             </FormGroup>

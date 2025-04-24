@@ -1,19 +1,37 @@
 import { createWorker, PSM, OEM } from 'tesseract.js';
 import { OCRProvider } from '../types/config';
 import * as jose from 'jose';
+import { AppConfig } from '../types/config';
 
 export interface OCRResult {
   text: string;
   confidence: number;
 }
 
-export async function performOCR(file: File, provider: OCRProvider, serviceAccountKey?: string): Promise<string> {
+export async function performOCR(file: File, provider: OCRProvider, config: AppConfig): Promise<string> {
   switch (provider) {
     case 'tesseract':
       return performTesseractOCR(file);
     case 'google-vision':
-      if (!serviceAccountKey) throw new Error('Google Cloud service account key is required');
-      return performGoogleVisionOCR(file, serviceAccountKey);
+      console.log('Debug - Environment Check:', {
+        'process.env available': !!process.env,
+        'All env variables': process.env,
+        'Specific key value': process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY,
+        'Config from localStorage': config.apiKeys.googleCloud.visionApiKey,
+        'Current working directory': process.cwd(),
+        'NODE_ENV': process.env.NODE_ENV
+      });
+
+      const apiKey = config.apiKeys.googleCloud.visionApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY;
+      console.log('Final API Key Check:', {
+        'Using key from': apiKey === config.apiKeys.googleCloud.visionApiKey ? 'config' : 'env',
+        'Key value': apiKey ? 'Present' : 'Missing'
+      });
+
+      if (!apiKey) {
+        throw new Error('Google Vision API key is required. Please configure it in settings or set NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY in your environment variables.');
+      }
+      return performGoogleVisionOCR(file, apiKey);
     default:
       throw new Error(`Unsupported OCR provider: ${provider}`);
   }
@@ -26,13 +44,13 @@ async function performTesseractOCR(file: File): Promise<string> {
   try {
     try {
       // Try to initialize with Hindi language support
-      await worker.loadLanguage('eng+hin');
-      await worker.initialize('eng+hin');
+      await (worker as any).loadLanguage('eng+hin');
+      await (worker as any).initialize('eng+hin');
     } catch (error) {
       console.error('Error loading Hindi language support:', error);
       // Fallback to English only
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
+      await (worker as any).loadLanguage('eng');
+      await (worker as any).initialize('eng');
       throw new Error(
         'Hindi language support is not available. To enable Hindi text recognition:\n' +
         '1. Download the Hindi language data from https://github.com/tesseract-ocr/tessdata/blob/main/hin.traineddata\n' +
@@ -57,90 +75,29 @@ async function performTesseractOCR(file: File): Promise<string> {
   }
 }
 
-async function performGoogleVisionOCR(file: File, serviceAccountKey: string): Promise<string> {
-  let serviceAccount;
-  try {
-    console.log('Received service account key:', serviceAccountKey.substring(0, 100) + '...');
-    serviceAccount = JSON.parse(serviceAccountKey);
-    console.log('Parsed service account:', {
-      hasClientEmail: !!serviceAccount.client_email,
-      hasPrivateKey: !!serviceAccount.private_key,
-      hasPrivateKeyId: !!serviceAccount.private_key_id,
-      type: serviceAccount.type
-    });
-    
-    if (!serviceAccount.client_email || !serviceAccount.private_key || !serviceAccount.private_key_id) {
-      console.error('Missing required fields:', {
-        client_email: serviceAccount.client_email,
-        private_key: serviceAccount.private_key ? 'present' : 'missing',
-        private_key_id: serviceAccount.private_key_id
-      });
-      throw new Error('Invalid service account key format');
-    }
-  } catch (error) {
-    console.error('Error parsing service account key:', error);
-    throw new Error('Invalid service account key. Please make sure you have pasted the correct JSON key file from Google Cloud Console.');
-  }
-
-  // Create JWT token
-  const now = Math.floor(Date.now() / 1000);
-  let token: string;
-  try {
-    const privateKey = await jose.importPKCS8(serviceAccount.private_key, 'RS256');
-    token = await new jose.SignJWT({
-      scope: 'https://www.googleapis.com/auth/cloud-platform',
-    })
-      .setProtectedHeader({ alg: 'RS256', kid: serviceAccount.private_key_id })
-      .setIssuedAt(now)
-      .setExpirationTime(now + 3600)
-      .setIssuer(serviceAccount.client_email)
-      .setSubject(serviceAccount.client_email)
-      .setAudience('https://oauth2.googleapis.com/token')
-      .sign(privateKey);
-  } catch (error) {
-    console.error('Error creating JWT token:', error);
-    throw new Error('Failed to create authentication token');
-  }
-
-  // Get an access token using the service account
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: token
-    }),
-  });
-
-  if (!tokenResponse.ok) {
-    const errorData = await tokenResponse.json().catch(() => ({}));
-    throw new Error(`Failed to get Google Cloud access token: ${errorData.error?.message || tokenResponse.statusText}`);
-  }
-
-  const { access_token } = await tokenResponse.json();
-
+async function performGoogleVisionOCR(file: File, apiKey: string): Promise<string> {
   // Convert file to base64
   const base64Image = await fileToBase64(file);
   
-  const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${access_token}`
-    },
-    body: JSON.stringify({
-      requests: [{
-        image: {
-          content: base64Image.split(',')[1]
-        },
-        features: [{
-          type: 'TEXT_DETECTION'
+  const response = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requests: [{
+          image: {
+            content: base64Image.split(',')[1]
+          },
+          features: [{
+            type: 'TEXT_DETECTION'
+          }]
         }]
-      }]
-    })
-  });
+      })
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

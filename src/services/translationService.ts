@@ -10,6 +10,7 @@ interface TranslationResponse {
 
 export async function translateText(text: string | undefined, targetLanguage: string, config: AppConfig): Promise<string> {
   // Return empty string if text is undefined or empty
+  console.log("config", config)
   if (!text || text.trim() === '') {
     return '';
   }
@@ -18,13 +19,16 @@ export async function translateText(text: string | undefined, targetLanguage: st
     return text;
   }
 
-  if (!config.googleCloudApiKey) {
-    throw new Error('Google Cloud API key is required for translation');
+  // Try to get API key from config or fall back to environment variable
+  const apiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Google Translation API key is not configured. Please set it in settings or environment variables.');
   }
 
   try {
     const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?key=${config.googleCloudApiKey}`,
+      `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
       {
         method: 'POST',
         headers: {

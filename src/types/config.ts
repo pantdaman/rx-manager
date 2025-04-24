@@ -1,17 +1,31 @@
+export type LLMProvider = 'google' | 'openai' | 'anthropic';
+
 export type OCRProvider = 'tesseract' | 'google-vision';
 
 export interface AppConfig {
-  llmProvider: 'google' | 'openai' | 'anthropic';
-  googleCloudApiKey?: string;
-  googleCloudProjectId?: string;
-  openaiApiKey?: string;
-  anthropicApiKey?: string;
+  llmProvider: LLMProvider;
   ocrProvider: OCRProvider;
-  ocrApiKey?: string;
-  visionApiKey?: string;
+  apiKeys: {
+    googleCloud: {
+      visionApiKey?: string;
+      translationApiKey?: string;
+      geminiApiKey?: string;
+    };
+    openai?: string;
+    anthropic?: string;
+  };
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
-  llmProvider: 'openai',
+  llmProvider: 'google',
   ocrProvider: 'tesseract',
+  apiKeys: {
+    googleCloud: {
+      visionApiKey: '',
+      translationApiKey: '',
+      geminiApiKey: ''
+    },
+    openai: '',
+    anthropic: ''
+  }
 }; 

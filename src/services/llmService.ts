@@ -1,7 +1,7 @@
 import { LLMProvider } from '../types/config';
 import { PrescriptionData } from '../types/prescription';
 import * as jose from 'jose';
-import { getApiUrl } from '../config/api';
+import { AppConfig } from '../types/config';
 
 const SYSTEM_PROMPT = `You are a medical prescription analyzer. Extract structured information from the given prescription text.
 
@@ -44,23 +44,27 @@ IMPORTANT: You must respond with ONLY a valid JSON object in the following forma
 export async function analyzePrescription(
   text: string,
   provider: LLMProvider,
-  apiKey: string
+  config: AppConfig
 ): Promise<PrescriptionData> {
   switch (provider) {
     case 'google':
-      return analyzeWithGoogle(text, apiKey);
+      return analyzeWithGoogle(text, config);
     case 'openai':
-      return analyzeWithOpenAI(text, apiKey);
+      return analyzeWithOpenAI(text, config.apiKeys.openai || '');
     case 'anthropic':
-      return analyzeWithAnthropic(text, apiKey);
+      return analyzeWithAnthropic(text, config.apiKeys.anthropic || '');
     default:
       throw new Error(`Unsupported LLM provider: ${provider}`);
   }
 }
 
-async function analyzeWithGoogle(text: string, apiKey: string): Promise<PrescriptionData> {
+async function analyzeWithGoogle(text: string, config: AppConfig): Promise<PrescriptionData> {
+  if (!config.apiKeys.googleCloud.geminiApiKey) {
+    throw new Error('Gemini API key is required for analysis');
+  }
+
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${config.apiKeys.googleCloud.geminiApiKey}`,
     {
       method: 'POST',
       headers: {
@@ -173,56 +177,5 @@ function parseAnthropicResponse(data: any): PrescriptionData {
   } catch (error) {
     console.error('Error parsing Anthropic response:', error);
     throw new Error('Failed to parse Anthropic response');
-  }
-}
-
-export async function searchDrugs(name: string) {
-  try {
-    const response = await fetch(`${getApiUrl('SEARCH_DRUGS')}?name=${encodeURIComponent(name)}`);
-    if (!response.ok) {
-      throw new Error('Failed to search drugs');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error searching drugs:', error);
-    throw error;
-  }
-}
-
-export async function processPrescription(file: File) {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch(getApiUrl('PROCESS_PRESCRIPTION'), {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to process prescription');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error processing prescription:', error);
-    throw error;
-  }
-}
-
-export async function searchStores(latitude: number, longitude: number) {
-  try {
-    const response = await fetch(
-      `${getApiUrl('SEARCH_STORES')}?latitude=${latitude}&longitude=${longitude}`
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to search stores');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error searching stores:', error);
-    throw error;
   }
 } 

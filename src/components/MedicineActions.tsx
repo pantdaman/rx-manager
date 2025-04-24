@@ -333,6 +333,69 @@ const SettingsButton = styled.button`
   }
 `;
 
+const Disclaimer = styled.div`
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+`;
+
+const FDAStatus = styled.div<{ $approved: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: ${props => props.$approved ? '#dcfce7' : '#fee2e2'};
+  color: ${props => props.$approved ? '#166534' : '#991b1b'};
+  margin-bottom: 1rem;
+`;
+
+const SourceBadge = styled.span<{ $source: 'FDA' | 'LLM' | 'Mock' }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  background-color: ${props => {
+    switch (props.$source) {
+      case 'FDA':
+        return '#dcfce7';
+      case 'LLM':
+        return '#fef3c7';
+      case 'Mock':
+        return '#e5e7eb';
+      default:
+        return '#fef3c7';
+    }
+  }};
+  color: ${props => {
+    switch (props.$source) {
+      case 'FDA':
+        return '#166534';
+      case 'LLM':
+        return '#92400e';
+      case 'Mock':
+        return '#374151';
+      default:
+        return '#92400e';
+    }
+  }};
+`;
+
+const DisclaimerText = styled.span`
+  font-size: 0.85rem;
+  color:rgb(8, 11, 16);
+  margin-left: 0.5rem;
+  font-style: italic;
+  background-color:rgb(235, 218, 137);
+`;
+
 interface MedicineActionsProps {
   name: string;
   dosage: string;
@@ -353,6 +416,7 @@ interface DrugInfo {
   dosage_administration?: string;
   pregnancy_risk?: string;
   source?: 'FDA' | 'LLM' | 'Mock';
+  fdaApproved: boolean;
 }
 
 interface Medicine {
@@ -526,8 +590,11 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
       }
 
       try {
-        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-        if (!config.googleCloudApiKey) {
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+        
+        // Check for API key in both config and environment variables
+        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+        if (!hasApiKey) {
           console.error('Google Cloud API key not configured for translation');
           setTranslatedDrugInfo(drugInfo);
           return;
@@ -567,7 +634,8 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
           purpose: drugInfo.purpose ? await translateText(drugInfo.purpose, currentLanguage, config) : 'No purpose information available.',
           dosage_administration: drugInfo.dosage_administration ? await translateText(drugInfo.dosage_administration, currentLanguage, config) : 'No dosage information available.',
           warnings: drugInfo.warnings ? await translateText(drugInfo.warnings, currentLanguage, config) : undefined,
-          pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, currentLanguage, config) : 'No pregnancy risk information available.'
+          pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, currentLanguage, config) : 'No pregnancy risk information available.',
+          fdaApproved: drugInfo.fdaApproved
         };
 
         setTranslatedDrugInfo(translatedInfo);
@@ -598,9 +666,23 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
       }
 
       try {
-        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-        if (!config.googleCloudApiKey) {
+        const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+        
+        // Check for API key in both config and environment variables
+        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+        if (!hasApiKey) {
           console.error('Google Cloud API key not configured for translation');
+          setTranslatedLabels({
+            medicineInformation: 'Medicine Information',
+            purpose: 'Purpose',
+            dosageAdministration: 'Dosage & Administration',
+            warnings: 'Warnings',
+            pregnancyRisk: 'Pregnancy Risk',
+            brandName: 'Brand Name',
+            genericName: 'Generic Name',
+            manufacturer: 'Manufacturer',
+            activeIngredients: 'Active Ingredients'
+          });
           return;
         }
 
@@ -667,7 +749,7 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
         if (fdaResponse.ok) {
           const data = await fdaResponse.json();
           if (data.detail !== 'Drug not found') {
-            setDrugInfo({ ...data, source: 'FDA' });
+            setDrugInfo({ ...data, source: 'FDA', fdaApproved: true });
             return;
           }
         }
@@ -687,7 +769,7 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
 
         if (llmResponse.ok) {
           const data = await llmResponse.json();
-          setDrugInfo({ ...data, source: 'LLM' });
+          setDrugInfo({ ...data, source: 'LLM', fdaApproved: false });
           return;
         }
       } catch (error) {
@@ -731,7 +813,7 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
       // Try to find a match in mock data
       const normalizedName = cleanedName.toLowerCase();
       if (mockDrugs[normalizedName]) {
-        setDrugInfo({ ...mockDrugs[normalizedName], source: 'Mock' });
+        setDrugInfo({ ...mockDrugs[normalizedName], source: 'Mock', fdaApproved: false });
         return;
       }
 
@@ -992,8 +1074,11 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
 
     setTranslating(true);
     try {
-      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-      if (!config.googleCloudApiKey) {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+      
+      // Check for API key in both config and environment variables
+      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+      if (!hasApiKey) {
         alert('Please configure Google Cloud API key in settings first');
         return;
       }
@@ -1039,7 +1124,8 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
               purpose: drugInfo.purpose ? await translateText(drugInfo.purpose, selectedLanguage, config) : 'No purpose information available.',
               dosage_administration: drugInfo.dosage_administration ? await translateText(drugInfo.dosage_administration, selectedLanguage, config) : 'No dosage information available.',
               warnings: drugInfo.warnings ? await translateText(drugInfo.warnings, selectedLanguage, config) : undefined,
-              pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, selectedLanguage, config) : 'No pregnancy risk information available.'
+              pregnancy_risk: drugInfo.pregnancy_risk ? await translateText(drugInfo.pregnancy_risk, selectedLanguage, config) : 'No pregnancy risk information available.',
+              fdaApproved: drugInfo.fdaApproved
             };
 
             setTranslatedDrugInfo(translatedInfo);
@@ -1232,21 +1318,13 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
         <ContentSection>
           <SectionHeader>
             {labels.medicineInformation}
-            <span className={`ml-2 px-2 py-1 text-xs rounded ${
-              infoToDisplay.source === 'FDA' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {infoToDisplay.source === 'FDA' ? 'FDA Verified' : 'AI Generated'}
-            </span>
+            <SourceBadge $source={infoToDisplay.source || 'LLM'}>
+              {infoToDisplay.source || 'LLM'}
+            </SourceBadge>
+            <DisclaimerText>
+            AI-generated extraction.Please verify with your healthcare provider
+            </DisclaimerText>
           </SectionHeader>
-          {infoToDisplay.source === 'LLM' && (
-            <div className="mt-2 p-3 bg-yellow-500 border border-green-500 rounded-md">
-              <p className="text-sm text-blue-800">
-                ⚠️ This information is generated by AI. Please consult your healthcare provider to verify all medical information and before making any medical decisions.
-              </p>
-            </div>
-          )}
           <SectionContent>
             <InfoGrid>
               <InfoItem>
@@ -1296,6 +1374,10 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
             <p>{infoToDisplay.pregnancy_risk || 'No pregnancy risk information available.'}</p>
           </SectionContent>
         </ContentSection>
+
+        <Disclaimer>
+          <strong>Important:</strong> This information is for reference only. Always consult with your healthcare provider before making any medical decisions or taking any medication.
+        </Disclaimer>
       </div>
     );
   };
@@ -1624,8 +1706,8 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
     }
 
     try {
-      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-      if (!config.googleCloudApiKey) return;
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+      if (!config.apiKeys.googleCloud.translationApiKey) return;
 
       const translatedStores = await Promise.all(stores.map(async (store) => ({
         ...store,
@@ -1677,8 +1759,8 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
     }
 
     try {
-      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{}');
-      if (!config.googleCloudApiKey) return;
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+      if (!config.apiKeys.googleCloud.translationApiKey) return;
 
       const translatedAlternatives = await Promise.all(alternatives.map(async (alt) => ({
         ...alt,

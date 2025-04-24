@@ -4,10 +4,14 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_GOOGLE_CLOUD_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_API_KEY,
     NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID,
+    NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY,
+    NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY,
+    NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY,
+    NEXT_PUBLIC_OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    NEXT_PUBLIC_ANTHROPIC_API_KEY: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
   },
   images: {
     domains: ['*'],
-    unoptimized: true,
   },
   // Disable source maps in production
   productionBrowserSourceMaps: false,
@@ -19,11 +23,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  output: 'export',
-  // Disable server-side features when exporting
-  experimental: {
-    appDir: true,
-  },
 };
 
-module.exports = nextConfig;
+module.exports = nextConfig; 

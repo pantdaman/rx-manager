@@ -43,6 +43,22 @@ async def perform_ocr(image_base64: str, is_pdf: bool = False, ocr_provider: str
         Extracted text from the image/PDF
     """
     try:
+        print(f"Performing OCR with provider: {ocr_provider}")
+        
+        # Log API key sources
+        print("API Key Sources:", {
+            "from_request": api_key or "Not provided",
+            "from_env": os.getenv('GOOGLE_VISION_API_KEY') or "Not set",
+            "using": "Request" if api_key else "Environment"
+        })
+        
+        # Use API key from request or fallback to .env
+        final_api_key = api_key or os.getenv('GOOGLE_VISION_API_KEY')
+        if not final_api_key:
+            raise Exception("No API key found in request or environment variables")
+            
+        print(f"Using API Key: {'Configured' if final_api_key else 'Not found'}")
+        
         # Decode the base64 data
         content = base64.b64decode(image_base64)
         
@@ -75,9 +91,7 @@ async def perform_ocr(image_base64: str, is_pdf: bool = False, ocr_provider: str
                     )
                 return perform_tesseract_ocr(content)
             elif ocr_provider == 'google-vision':
-                if not api_key:
-                    raise Exception("Google Vision API key is required")
-                return perform_google_vision_ocr(content, api_key)
+                return perform_google_vision_ocr(content, final_api_key)
             else:
                 raise Exception(f"Unsupported OCR provider: {ocr_provider}")
             

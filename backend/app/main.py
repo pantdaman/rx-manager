@@ -6,6 +6,11 @@ from .services.llm_service import analyze_prescription
 from .api.stores import router as stores_router
 from .api.drugs import router as drugs_router
 from .api.pdf import router as pdf_router
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(title="RX Manager Demo")
 
@@ -42,12 +47,15 @@ async def analyze_prescription_image(
         # Determine file type
         is_pdf = file.content_type == 'application/pdf'
         
+        # Use API key from request or fallback to .env
+        api_key = apiKey or os.getenv('GOOGLE_VISION_API_KEY')
+        
         # Extract text using specified OCR provider
         text = await perform_ocr(
             file_base64,
             is_pdf=is_pdf,
             ocr_provider=ocrProvider,
-            api_key=apiKey
+            api_key=api_key
         )
         
         if not text:

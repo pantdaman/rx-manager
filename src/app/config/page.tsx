@@ -7,9 +7,11 @@ export default function ConfigPage() {
   const [config, setConfig] = useState<AppConfig>({
     ...DEFAULT_CONFIG,
     apiKeys: {
-      googleCloud: { apiKey: '', projectId: '' },
-      openai: '',
-      anthropic: ''
+      googleCloud: { 
+        visionApiKey: '', 
+        translationApiKey: '',
+        geminiApiKey: '' 
+      }
     }
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -25,11 +27,10 @@ export default function ConfigPage() {
         ...parsedConfig,
         apiKeys: {
           googleCloud: { 
-            apiKey: parsedConfig.apiKeys?.googleCloud?.apiKey || '', 
-            projectId: parsedConfig.apiKeys?.googleCloud?.projectId || '' 
-          },
-          openai: parsedConfig.apiKeys?.openai || '',
-          anthropic: parsedConfig.apiKeys?.anthropic || ''
+            visionApiKey: parsedConfig.apiKeys?.googleCloud?.visionApiKey || '', 
+            translationApiKey: parsedConfig.apiKeys?.googleCloud?.translationApiKey || '',
+            geminiApiKey: parsedConfig.apiKeys?.googleCloud?.geminiApiKey || ''
+          }
         }
       });
     }
@@ -48,7 +49,7 @@ export default function ConfigPage() {
     setIsSaving(false);
   };
 
-  const handleGoogleCloudConfigChange = (field: 'apiKey' | 'projectId', value: string) => {
+  const handleGoogleCloudConfigChange = (field: 'visionApiKey' | 'translationApiKey' | 'geminiApiKey', value: string) => {
     setConfig(prev => ({
       ...prev,
       apiKeys: {
@@ -103,6 +104,45 @@ export default function ConfigPage() {
                 />
                 Google Cloud Vision API (Paid, more accurate)
               </label>
+              {config.ocrProvider === 'google-vision' && (
+                <div className="ml-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Google Vision API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={config.apiKeys.googleCloud.visionApiKey || ''}
+                    onChange={(e) => handleGoogleCloudConfigChange('visionApiKey', e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Enter your Google Vision API key"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get this from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Google Cloud Console</a>
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Translation Provider Section */}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Language Translation</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Google Translation API Key
+                </label>
+                <input
+                  type="password"
+                  value={config.apiKeys.googleCloud.translationApiKey || ''}
+                  onChange={(e) => handleGoogleCloudConfigChange('translationApiKey', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Enter your Google Translation API key"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Get this from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Google Cloud Console</a>
+                </p>
+              </div>
             </div>
           </div>
 
@@ -119,60 +159,17 @@ export default function ConfigPage() {
                   onChange={(e) => setConfig(prev => ({ ...prev, llmProvider: e.target.value as LLMProvider }))}
                   className="mr-2"
                 />
-                Google Vertex AI (Gemini Pro)
+                Google Gemini
               </label>
-              <label className="block">
-                <input
-                  type="radio"
-                  name="llm-provider"
-                  value="openai"
-                  checked={config.llmProvider === 'openai'}
-                  onChange={(e) => setConfig(prev => ({ ...prev, llmProvider: e.target.value as LLMProvider }))}
-                  className="mr-2"
-                />
-                OpenAI GPT-4
-              </label>
-              <label className="block">
-                <input
-                  type="radio"
-                  name="llm-provider"
-                  value="anthropic"
-                  checked={config.llmProvider === 'anthropic'}
-                  onChange={(e) => setConfig(prev => ({ ...prev, llmProvider: e.target.value as LLMProvider }))}
-                  className="mr-2"
-                />
-                Anthropic Claude
-              </label>
-            </div>
-          </div>
-
-          {/* API Keys */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">API Keys</h2>
-            <div className="space-y-4">
-              {/* Google Cloud Configuration */}
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-medium text-gray-900">Google Cloud Configuration</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Project ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.apiKeys.googleCloud.projectId}
-                    onChange={(e) => handleGoogleCloudConfigChange('projectId', e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                    placeholder="Enter your Google Cloud Project ID"
-                  />
-                </div>
-                <div>
+              {config.llmProvider === 'google' && (
+                <div className="ml-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Gemini API Key
                   </label>
                   <input
                     type="password"
-                    value={config.apiKeys.googleCloud.apiKey}
-                    onChange={(e) => handleGoogleCloudConfigChange('apiKey', e.target.value)}
+                    value={config.apiKeys.googleCloud.geminiApiKey || ''}
+                    onChange={(e) => handleGoogleCloudConfigChange('geminiApiKey', e.target.value)}
                     className="w-full px-3 py-2 border rounded-md"
                     placeholder="Enter your Gemini API key from Google AI Studio"
                   />
@@ -180,8 +177,14 @@ export default function ConfigPage() {
                     Get this from <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Google AI Studio</a>
                   </p>
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
 
+          {/* API Keys */}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">API Keys</h2>
+            <div className="space-y-4">
               {/* OpenAI Configuration */}
               <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
                 <h3 className="text-lg font-medium text-gray-900">OpenAI Configuration</h3>

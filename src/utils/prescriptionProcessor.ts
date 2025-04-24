@@ -11,36 +11,17 @@ export async function processPrescription(
   targetLanguage: string,
   config: AppConfig
 ): Promise<string> {
-  if (!config.googleCloudApiKey) {
-    throw new Error('Google Cloud API key is required for OCR');
+  if (config.ocrProvider === 'google-vision' && !config.apiKeys.googleCloud.visionApiKey) {
+    throw new Error('Google Vision API key is required for OCR');
   }
 
-  if (!config.llmProvider) {
-    throw new Error('LLM provider must be selected');
-  }
-
-  // Check for required API keys based on LLM provider
-  switch (config.llmProvider) {
-    case 'google':
-      if (!config.googleCloudApiKey || !config.googleCloudProjectId) {
-        throw new Error('Google Cloud API key and Project ID are required for Google Vertex AI');
-      }
-      break;
-    case 'openai':
-      if (!config.openaiApiKey) {
-        throw new Error('OpenAI API key is required');
-      }
-      break;
-    case 'anthropic':
-      if (!config.anthropicApiKey) {
-        throw new Error('Anthropic API key is required');
-      }
-      break;
+  if (!config.apiKeys.googleCloud.geminiApiKey) {
+    throw new Error('Gemini API key is required for analysis');
   }
 
   try {
     // First, perform OCR on the image
-    const ocrResult = await performOCR(imageFile, config);
+    const ocrResult = await performOCR(imageFile, config.ocrProvider, config);
     
     // Then translate the text if needed
     const translatedText = await translateText(ocrResult.text, targetLanguage, config);
@@ -55,12 +36,12 @@ export async function processPrescription(
   }
 }
 
-async function performOCR(imageFile: File, config: AppConfig): Promise<OCRResult> {
+async function performOCR(imageFile: File, provider: OCRProvider, config: AppConfig): Promise<OCRResult> {
   const formData = new FormData();
   formData.append('file', imageFile);
 
   const response = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${config.googleCloudApiKey}`,
+    `https://vision.googleapis.com/v1/images:annotate?key=${config.apiKeys.googleCloud.visionApiKey}`,
     {
       method: 'POST',
       headers: {
@@ -105,18 +86,20 @@ async function analyzePrescription(text: string, config: AppConfig): Promise<str
 
 async function analyzeWithGoogleAI(text: string, config: AppConfig): Promise<string> {
   const response = await fetch(
-    `https://us-central1-aiplatform.googleapis.com/v1/projects/${config.googleCloudProjectId}/locations/us-central1/publishers/google/models/text-bison:predict`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${config.apiKeys.googleCloud.geminiApiKey}`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.googleCloudApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        instances: [{
-          prompt: `Analyze this prescription and extract key information: ${text}`
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Analyze this prescription and extract key information: ${text}`
+          }]
         }],
-        parameters: {
+        generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 1024,
         }
