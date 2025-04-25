@@ -21,7 +21,7 @@ export interface StoreSearchParams {
   district?: string;
 }
 
-const API_BASE_URL = 'http://localhost:8002'; // Update this based on your backend URL
+const API_BASE_URL = 'https://rx-manager-backend-193388977136.us-central1.run.app'; // Production backend URL
 
 export const searchStores = async (params: StoreSearchParams): Promise<Store[]> => {
   try {

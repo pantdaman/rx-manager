@@ -17,7 +17,11 @@ app = FastAPI(title="RX Manager Demo")
 # Configure CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8002",
+        "https://rx-manager-frontend-193388977136.us-central1.run.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
