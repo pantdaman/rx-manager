@@ -9,6 +9,7 @@ import SettingsModal from './SettingsModal';
 import { AppConfig } from '../types/config';
 import TranslationDropdown from './TranslationDropdown';
 import { translateText } from '../services/translationService';
+import { useEnv } from '../hooks/useEnv';
 
 interface MedicineScheduleProps {
   medicines: Medicine[];
@@ -462,6 +463,8 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     viewDetails: 'Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.'
   });
 
+  const env = useEnv();
+
   useEffect(() => {
     if (medicines.length > 0) {
       setShowUploader(false);
@@ -479,35 +482,20 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
 
   useEffect(() => {
     const translateLabels = async () => {
-      if (currentLanguage === 'en') {
-        setTranslatedLabels({
-          morning: 'Morning',
-          afternoon: 'Afternoon',
-          evening: 'Evening',
-          night: 'Night',
-          uploadNew: 'Upload New Prescription',
-          medicineSchedule: 'Medicine Schedule',
-          personalizedSchedule: 'Your personalized medicine schedule based on your prescription',
-          aiGenerated: 'AI-generated extraction. Always confirm with your doctor.',
-          viewDetails: 'Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.'
-        });
-        return;
-      }
-
       try {
         const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
         
         // Debug check for environment variables
         console.log('All env vars:', {
-          translationKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY,
-          visionKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY,
-          geminiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY
+          translationKey: env.translationApiKey,
+          visionKey: env.visionApiKey,
+          geminiKey: env.geminiApiKey
         });
         
         // Check for API key in both config and environment variables
-        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
         console.log("hasApiKey", hasApiKey)
-        console.log("process.env.NEXT_PUBLIC_GOOGLE_TRANSLATION_API_KEY", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
+        console.log("env.translationApiKey", env.translationApiKey)
         if (!hasApiKey) {
           setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
           return;
@@ -543,16 +531,16 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     };
 
     translateLabels();
-  }, [currentLanguage]);
+  }, [currentLanguage, env]);
 
   const translateMedicines = async () => {
     try {
       const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
       
       // Check for API key in both config and environment variables
-      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
       console.log("1hasApiKey", hasApiKey)
-      console.log("1process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
+      console.log("1env.translationApiKey", env.translationApiKey)
       if (!hasApiKey) {
         setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
         setTranslatedMedicines(medicines);
