@@ -455,6 +455,8 @@ interface Action {
   type: 'search' | 'store' | 'details' | 'alternatives' | 'stores' | null;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rx-manager-backend-193388977136.us-central1.run.app';
+
 const MedicineActions: React.FC<MedicineActionsProps> = ({
   name,
   dosage,
@@ -744,7 +746,7 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
 
       // First try the FDA API with cleaned name
       try {
-        const fdaResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drugs/search/${encodeURIComponent(cleanedName)}`);
+        const fdaResponse = await fetch(`${API_URL}/api/drugs/search/${encodeURIComponent(cleanedName)}`);
         
         if (fdaResponse.ok) {
           const data = await fdaResponse.json();
@@ -759,7 +761,7 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
 
       // If FDA API fails, try the LLM service
       try {
-        const llmResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drugs/llm-search`, {
+        const llmResponse = await fetch(`${API_URL}/api/drugs/llm-search`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
