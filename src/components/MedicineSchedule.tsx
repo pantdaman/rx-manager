@@ -485,18 +485,25 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
       try {
         const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
         
-        // Debug check for environment variables
-        console.log('All env vars:', {
-          translationKey: env.translationApiKey,
-          visionKey: env.visionApiKey,
-          geminiKey: env.geminiApiKey
-        });
-        
-        // Check for API key in both config and environment variables
-        const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
-        console.log("hasApiKey", hasApiKey)
-        console.log("env.translationApiKey", env.translationApiKey)
-        if (!hasApiKey) {
+        // Only log if we haven't checked before
+        if (!config._hasCheckedApiKeys) {
+          console.log('All env vars:', {
+            translationKey: env.translationApiKey,
+            visionKey: env.visionApiKey,
+            geminiApiKey: env.geminiApiKey
+          });
+          
+          // Check for API key in both config and environment variables
+          const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
+          console.log("hasApiKey", hasApiKey);
+          console.log("env.translationApiKey", env.translationApiKey);
+          
+          // Mark that we've checked
+          config._hasCheckedApiKeys = true;
+          localStorage.setItem('rx-manager-config', JSON.stringify(config));
+        }
+
+        if (!config?.apiKeys?.googleCloud?.translationApiKey && !env.translationApiKey) {
           setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
           return;
         }
@@ -525,13 +532,12 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           viewDetails: labels[8]
         });
       } catch (error) {
-        console.error('Error translating labels:', error);
-        setTranslationError('Failed to translate labels. Please check your API configuration.');
+        console.error('Error in translateLabels:', error);
       }
     };
 
     translateLabels();
-  }, [currentLanguage, env]);
+  }, [env.translationApiKey, env.visionApiKey, env.geminiApiKey]);
 
   const translateMedicines = async () => {
     try {
