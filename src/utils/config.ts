@@ -1,8 +1,21 @@
 export const getApiKey = (keyName: string): string => {
-  // First try to get from localStorage
-  const storedKey = localStorage.getItem(keyName);
-  if (storedKey) {
-    return storedKey;
+  // First try to get from localStorage config object
+  const configStr = localStorage.getItem('rx-manager-config');
+  if (configStr) {
+    try {
+      const config = JSON.parse(configStr);
+      if (keyName === API_KEYS.TRANSLATION && config.apiKeys?.googleCloud?.translationApiKey) {
+        return config.apiKeys.googleCloud.translationApiKey;
+      }
+      if (keyName === API_KEYS.VISION && config.apiKeys?.googleCloud?.visionApiKey) {
+        return config.apiKeys.googleCloud.visionApiKey;
+      }
+      if (keyName === API_KEYS.GEMINI && config.apiKeys?.googleCloud?.geminiApiKey) {
+        return config.apiKeys.googleCloud.geminiApiKey;
+      }
+    } catch (e) {
+      console.error('Error parsing config from localStorage:', e);
+    }
   }
 
   // Then try to get from environment variables
