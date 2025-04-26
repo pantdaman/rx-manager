@@ -45,7 +45,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app'
+      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app,NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}'
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest'
