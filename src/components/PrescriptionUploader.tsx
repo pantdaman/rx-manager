@@ -20,7 +20,7 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
 
     try {
       // Get user configuration from localStorage
-      const configStr = localStorage.getItem('rx-manager-config');
+      const configStr = localStorage.getItem('appConfig');
       const config = configStr ? JSON.parse(configStr) : null;
 
       // Log the source of API keys
