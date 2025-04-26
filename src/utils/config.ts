@@ -19,9 +19,20 @@ export const getApiKey = (keyName: string): string => {
   }
 
   // Then try to get from environment variables
-  const envKey = process.env[keyName];
-  if (envKey) {
-    return envKey;
+  // In Next.js, public environment variables are available at build time
+  // and are embedded in the client-side JavaScript
+  if (typeof window !== 'undefined') {
+    // We're in the browser
+    const envKey = (window as any).__NEXT_DATA__?.props?.pageProps?.env?.[keyName];
+    if (envKey) {
+      return envKey;
+    }
+  } else {
+    // We're on the server
+    const envKey = process.env[keyName];
+    if (envKey) {
+      return envKey;
+    }
   }
 
   // If neither exists, return empty string
