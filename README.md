@@ -36,11 +36,4 @@ The application can be deployed using any static site hosting service that suppo
 - [Netlify](https://www.netlify.com/)
 - [AWS Amplify](https://aws.amazon.com/amplify/)
 - [GitHub Pages](https://pages.github.com/)
-
-For production deployment, make sure to set up the following environment variables:
-
-```bash
-NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=your_google_cloud_translation_api_key
-NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key
-NEXT_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_api_key
-```
+- [Google Cloud Run](https://cloud.google.com/run) (recommended for this project)

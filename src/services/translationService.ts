@@ -1,4 +1,5 @@
 import { AppConfig } from '../types/config';
+import { getTranslationApiKey } from '../utils/config';
 
 interface TranslationResponse {
   data: {
@@ -12,8 +13,7 @@ export async function translateText(text: string | undefined, targetLanguage: st
   // Return empty string if text is undefined or empty
   console.log("Translation service debug:", {
     config,
-    envTranslationKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY,
-    configTranslationKey: config?.apiKeys?.googleCloud?.translationApiKey
+    envTranslationKey: getTranslationApiKey()
   });
 
   if (!text || text.trim() === '') {
@@ -24,8 +24,8 @@ export async function translateText(text: string | undefined, targetLanguage: st
     return text;
   }
 
-  // Try to get API key from config or fall back to environment variable
-  const apiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+  // Get API key from centralized config
+  const apiKey = getTranslationApiKey();
 
   if (!apiKey) {
     throw new Error('Google Translation API key is not configured. Please set it in settings or environment variables.');

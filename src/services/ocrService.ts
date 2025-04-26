@@ -2,6 +2,7 @@ import { createWorker, PSM, OEM } from 'tesseract.js';
 import { OCRProvider } from '../types/config';
 import * as jose from 'jose';
 import { AppConfig } from '../types/config';
+import { getVisionApiKey } from '../utils/config';
 
 export interface OCRResult {
   text: string;
@@ -16,13 +17,13 @@ export async function performOCR(file: File, provider: OCRProvider, config: AppC
       console.log('Debug - Environment Check:', {
         'process.env available': !!process.env,
         'All env variables': process.env,
-        'Specific key value': process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY,
+        'Specific key value': getVisionApiKey(),
         'Config from localStorage': config.apiKeys.googleCloud.visionApiKey,
         'Current working directory': process.cwd(),
         'NODE_ENV': process.env.NODE_ENV
       });
 
-      const apiKey = config.apiKeys.googleCloud.visionApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY;
+      const apiKey = getVisionApiKey();
       console.log('Final API Key Check:', {
         'Using key from': apiKey === config.apiKeys.googleCloud.visionApiKey ? 'config' : 'env',
         'Key value': apiKey ? 'Present' : 'Missing'

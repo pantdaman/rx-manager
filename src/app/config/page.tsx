@@ -27,10 +27,26 @@ export default function ConfigPage() {
         ...parsedConfig,
         apiKeys: {
           googleCloud: { 
-            visionApiKey: parsedConfig.apiKeys?.googleCloud?.visionApiKey || '', 
-            translationApiKey: parsedConfig.apiKeys?.googleCloud?.translationApiKey || '',
-            geminiApiKey: parsedConfig.apiKeys?.googleCloud?.geminiApiKey || ''
-          }
+            visionApiKey: parsedConfig.apiKeys?.googleCloud?.visionApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY || '', 
+            translationApiKey: parsedConfig.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY || '',
+            geminiApiKey: parsedConfig.apiKeys?.googleCloud?.geminiApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY || ''
+          },
+          openai: parsedConfig.apiKeys?.openai || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+          anthropic: parsedConfig.apiKeys?.anthropic || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || ''
+        }
+      });
+    } else {
+      // If no saved config, use environment variables
+      setConfig({
+        ...DEFAULT_CONFIG,
+        apiKeys: {
+          googleCloud: {
+            visionApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY || '',
+            translationApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY || '',
+            geminiApiKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY || ''
+          },
+          openai: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+          anthropic: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || ''
         }
       });
     }
