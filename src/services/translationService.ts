@@ -10,7 +10,12 @@ interface TranslationResponse {
 
 export async function translateText(text: string | undefined, targetLanguage: string, config: AppConfig): Promise<string> {
   // Return empty string if text is undefined or empty
-  console.log("config", config)
+  console.log("Translation service debug:", {
+    config,
+    envTranslationKey: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY,
+    configTranslationKey: config?.apiKeys?.googleCloud?.translationApiKey
+  });
+
   if (!text || text.trim() === '') {
     return '';
   }
