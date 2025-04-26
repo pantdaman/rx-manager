@@ -1,19 +1,19 @@
 steps:
   # Build the frontend container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:$COMMIT_SHA', '-f', 'frontend.Dockerfile', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest', '-f', 'frontend.Dockerfile', '.']
 
   # Build the backend container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:$COMMIT_SHA', './backend']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest', './backend']
 
   # Push the frontend container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest']
 
   # Push the backend container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest']
 
   # Deploy backend container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -23,14 +23,12 @@ steps:
       - 'deploy'
       - 'rx-manager-backend'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
-      - '--set-env-vars'
-      - 'CORS_ORIGINS=https://rx-manager-frontend-193388977136.us-central1.run.app'
 
   # Deploy frontend container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -40,7 +38,7 @@ steps:
       - 'deploy'
       - 'rx-manager-frontend'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -50,5 +48,5 @@ steps:
       - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:$COMMIT_SHA'
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:$COMMIT_SHA' 
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest' 
