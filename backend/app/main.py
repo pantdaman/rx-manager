@@ -52,7 +52,7 @@ async def analyze_prescription_image(
         is_pdf = file.content_type == 'application/pdf'
         
         # Use API key from request or fallback to .env
-        api_key = apiKey or os.getenv('GOOGLE_VISION_API_KEY')
+        api_key = apiKey or os.getenv('NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY')
         
         # Extract text using specified OCR provider
         text = await perform_ocr(
