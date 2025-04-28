@@ -494,7 +494,7 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           });
           
           // Check for API key in both config and environment variables
-          const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
+          const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
           console.log("hasApiKey", hasApiKey);
           console.log("env.translationApiKey", env.translationApiKey);
           
@@ -503,7 +503,7 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           localStorage.setItem('rx-manager-config', JSON.stringify(config));
         }
 
-        if (!config?.apiKeys?.googleCloud?.translationApiKey && !env.translationApiKey) {
+        if (!config?.apiKeys?.googleCloud?.translationApiKey && !process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY) {
           setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
           return;
         }
@@ -544,9 +544,11 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
       const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
       
       // Check for API key in both config and environment variables
-      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || env.translationApiKey;
+      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
       console.log("1hasApiKey", hasApiKey)
       console.log("1env.translationApiKey", env.translationApiKey)
+      console.log("process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
+      
       if (!hasApiKey) {
         setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
         setTranslatedMedicines(medicines);

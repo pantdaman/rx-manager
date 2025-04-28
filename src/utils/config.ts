@@ -4,14 +4,8 @@ export const getApiKey = (keyName: string): string => {
   if (configStr) {
     try {
       const config = JSON.parse(configStr);
-      if (keyName === API_KEYS.TRANSLATION && config.apiKeys?.googleCloud?.translationApiKey) {
-        return config.apiKeys.googleCloud.translationApiKey;
-      }
       if (keyName === API_KEYS.VISION && config.apiKeys?.googleCloud?.visionApiKey) {
         return config.apiKeys.googleCloud.visionApiKey;
-      }
-      if (keyName === API_KEYS.GEMINI && config.apiKeys?.googleCloud?.geminiApiKey) {
-        return config.apiKeys.googleCloud.geminiApiKey;
       }
     } catch (e) {
       console.error('Error parsing config from localStorage:', e);
@@ -45,6 +39,4 @@ export const API_KEYS = {
   GEMINI: 'NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY',
 } as const;
 
-export const getTranslationApiKey = () => getApiKey(API_KEYS.TRANSLATION);
-export const getVisionApiKey = () => getApiKey(API_KEYS.VISION);
-export const getGeminiApiKey = () => getApiKey(API_KEYS.GEMINI); 
+export const getVisionApiKey = () => getApiKey(API_KEYS.VISION); 

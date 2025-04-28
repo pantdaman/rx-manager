@@ -8,6 +8,8 @@ import { Languages, Settings, X } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import { AppConfig } from '../types/config';
 
+console.log("Build-time env:", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY);
+
 // Types
 interface TranslatedLabels {
   medicineInformation?: string;
@@ -456,7 +458,7 @@ interface Action {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rx-manager-backend-193388977136.us-central1.run.app';
-
+console.log('API_URL:', API_URL);
 const MedicineActions: React.FC<MedicineActionsProps> = ({
   name,
   dosage,
