@@ -4,9 +4,10 @@ from datetime import datetime
 
 class Medicine(BaseModel):
     name: str
-    dosage: str
+    confidence: Optional[int] = None
+    dosage: Optional[str] = None
     frequency: dict
-    duration: str
+    duration: Optional[str] = None
     specialInstructions: Optional[str] = None
 
 class PatientInfo(BaseModel):

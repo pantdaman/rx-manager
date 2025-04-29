@@ -10,11 +10,6 @@ interface TranslationResponse {
 }
 
 export async function translateText(text: string | undefined, targetLanguage: string, config: AppConfig): Promise<string> {
-  // Return empty string if text is undefined or empty
-  console.log("Translation service debug:", {
-    config,
-    envTranslationKey: getApiKey(API_KEYS.TRANSLATION)
-  });
 
   if (!text || text.trim() === '') {
     return '';

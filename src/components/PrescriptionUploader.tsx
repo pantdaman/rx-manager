@@ -23,15 +23,6 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
       const configStr = localStorage.getItem('appConfig');
       const config = configStr ? JSON.parse(configStr) : null;
 
-      // Log the source of API keys
-      console.log('API Key Sources:', {
-        visionApiKey: {
-          fromLocalStorage: config?.apiKeys?.googleCloud?.visionApiKey || 'Not set',
-          fromEnv: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY || 'Not set',
-          using: config?.apiKeys?.googleCloud?.visionApiKey ? 'LocalStorage' : 'Environment'
-        }
-      });
-
       const formData = new FormData();
       formData.append('file', file);
       formData.append('ocrProvider', config?.ocrProvider || 'google-vision');
@@ -42,7 +33,16 @@ const PrescriptionUploader: React.FC<PrescriptionUploaderProps> = ({ onUploadCom
         formData.append('apiKey', visionApiKey || '');
       }
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      // Log environment variables for debugging
+      // console.log('Environment Variables:', {
+      //   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+      //   NODE_ENV: process.env.NODE_ENV
+      // });
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+      if (!API_BASE_URL) {
+        throw new Error('API URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable.');
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/analyze-prescription`, {
         method: 'POST',

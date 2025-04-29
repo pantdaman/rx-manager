@@ -200,26 +200,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <Label htmlFor="ocrProvider">OCR Provider</Label>
             <Select
               id="ocrProvider"
-              value={config.ocrProvider}
+              value="google-vision"
+              disabled
               onChange={(e) => handleProviderChange(e.target.value as OCRProvider, 'ocr')}
             >
-              <option value="tesseract">Tesseract.js (Free, runs locally)</option>
               <option value="google-vision">Google Cloud Vision API (Paid, more accurate)</option>
             </Select>
           </FormGroup>
 
-          {config.ocrProvider === 'google-vision' && (
-            <FormGroup>
-              <Label htmlFor="visionApiKey">Google Vision API Key</Label>
-              <Input
-                type="password"
-                id="visionApiKey"
-                value={config.apiKeys.googleCloud.visionApiKey || ''}
-                onChange={(e) => handleGoogleCloudConfigChange('visionApiKey', e.target.value)}
-                placeholder="Enter Google Vision API key"
-              />
-            </FormGroup>
-          )}
+          <FormGroup>
+            <Label htmlFor="visionApiKey">Google Vision API Key</Label>
+            <Input
+              type="password"
+              id="visionApiKey"
+              value={config.apiKeys.googleCloud.visionApiKey || ''}
+              onChange={(e) => handleGoogleCloudConfigChange('visionApiKey', e.target.value)}
+              placeholder="Enter Google Vision API key"
+            />
+          </FormGroup>
 
           <FormGroup>
             <Label htmlFor="translationApiKey">Google Translation API Key</Label>

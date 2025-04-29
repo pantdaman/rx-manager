@@ -94,6 +94,12 @@ const LANGUAGES: Language[] = [
   { code: 'kn', name: 'Kannada' },
   { code: 'ml', name: 'Malayalam' },
   { code: 'pa', name: 'Punjabi' },
+  { code: 'de', name: 'German' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'ru', name: 'Russian' }
 ];
 
 interface TranslationDropdownProps {

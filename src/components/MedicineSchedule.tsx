@@ -353,7 +353,12 @@ const TimeSlotSection: React.FC<{
   medicines: Medicine[];
   selectedMedicine: Medicine | null;
   onMedicineClick: (medicine: Medicine) => void;
-}> = ({ slot, medicines, selectedMedicine, onMedicineClick }) => {
+}> = React.memo(({ slot, medicines, selectedMedicine, onMedicineClick }) => {
+  // Only log when medicines actually change
+  const filteredMedicines = React.useMemo(() => {
+    return medicines.filter(medicine => medicine.frequency[slot.id]);
+  }, [medicines, slot.id]);
+  
   const getTimeSlotIcon = (id: string) => {
     switch (id) {
       case 'morning':
@@ -378,12 +383,12 @@ const TimeSlotSection: React.FC<{
         </TimeSlotTitle>
       </TimeSlotHeader>
       <MedicineList>
-        {medicines.length === 0 ? (
+        {filteredMedicines.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#6b7280' }}>
             No medication
           </div>
         ) : (
-          medicines.map((medicine, index) => (
+          filteredMedicines.map((medicine, index) => (
             <MedicineCard
               key={`${medicine.name}-${index}`}
               medicine={medicine}
@@ -396,7 +401,7 @@ const TimeSlotSection: React.FC<{
       </MedicineList>
     </TimeSlotContainer>
   );
-};
+});
 
 const SettingsButton = styled.button`
   position: fixed;
@@ -433,14 +438,17 @@ const HeaderActions = styled.div`
   gap: 1rem;
 `;
 
-const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUploadComplete }) => {
+const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines: initialMedicines, onUploadComplete }) => {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [showMedicineDetails, setShowMedicineDetails] = useState(false);
   const [showUploader, setShowUploader] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [translatedMedicines, setTranslatedMedicines] = useState<Medicine[]>([]);
+  const [medicines, setMedicines] = useState<Medicine[]>(initialMedicines || []);
+  const [originalMedicines, setOriginalMedicines] = useState<Medicine[]>(initialMedicines || []);
   const [translationError, setTranslationError] = useState<string | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [ocrRawText, setOcrRawText] = useState<string | null>(null);
   const [translatedLabels, setTranslatedLabels] = useState<{
     morning: string;
     afternoon: string;
@@ -458,7 +466,7 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     night: 'Night',
     uploadNew: 'Upload New Prescription',
     medicineSchedule: 'Medicine Schedule',
-    personalizedSchedule: 'Your personalized medicine schedule based on your prescription',
+    personalizedSchedule: 'Personalized Schedule',
     aiGenerated: 'AI-generated extraction. Always confirm with your doctor.',
     viewDetails: 'Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.'
   });
@@ -466,19 +474,59 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
   const env = useEnv();
 
   useEffect(() => {
-    if (medicines.length > 0) {
-      setShowUploader(false);
+    if (initialMedicines) {
+      setMedicines(initialMedicines);
+      setOriginalMedicines(initialMedicines);
     }
-  }, [medicines]);
+  }, [initialMedicines]);
 
   useEffect(() => {
     if (currentLanguage !== 'en' && medicines.length > 0) {
       translateMedicines();
-    } else {
-      setTranslatedMedicines(medicines);
+    } else if (currentLanguage === 'en') {
+      // When switching back to English, restore original medicines
+      setMedicines(originalMedicines);
       setTranslationError(null);
     }
-  }, [currentLanguage, medicines]);
+  }, [currentLanguage, medicines, originalMedicines]);
+
+  const translateMedicines = async () => {
+    try {
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
+
+      if (!hasApiKey) {
+        setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
+        return;
+      }
+
+      const translated = await Promise.all(
+        originalMedicines.map(async (medicine) => {
+          const [translatedName, translatedDosage, translatedDuration, translatedInstructions] = await Promise.all([
+            translateText(medicine.name, currentLanguage, config),
+            translateText(medicine.dosage, currentLanguage, config),
+            translateText(medicine.duration, currentLanguage, config),
+            translateText(medicine.specialInstructions || '', currentLanguage, config)
+          ]);
+
+          return {
+            ...medicine,
+            name: translatedName,
+            dosage: translatedDosage,
+            duration: translatedDuration,
+            specialInstructions: translatedInstructions
+          };
+        })
+      );
+
+      setMedicines(translated);
+      setTranslationError(null);
+    } catch (error) {
+      console.error('Translation error:', error);
+      setTranslationError('Failed to translate medicines. Please check your API configuration.');
+      setMedicines(originalMedicines);
+    }
+  };
 
   useEffect(() => {
     const translateLabels = async () => {
@@ -495,8 +543,6 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           
           // Check for API key in both config and environment variables
           const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
-          console.log("hasApiKey", hasApiKey);
-          console.log("env.translationApiKey", env.translationApiKey);
           
           // Mark that we've checked
           config._hasCheckedApiKeys = true;
@@ -515,7 +561,7 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
           translateText('Night', currentLanguage, config),
           translateText('Upload New Prescription', currentLanguage, config),
           translateText('Medicine Schedule', currentLanguage, config),
-          translateText('Your personalized medicine schedule based on your prescription', currentLanguage, config),
+          translateText('Personalized Schedule', currentLanguage, config),
           translateText('AI-generated extraction. Always confirm with your doctor.', currentLanguage, config),
           translateText('Click on any medicine to view generic alternatives from Jan Aushadhi, locate nearby Jan Aushadhi stores, and get detailed information.', currentLanguage, config)
         ]);
@@ -537,57 +583,86 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
     };
 
     translateLabels();
-  }, [env.translationApiKey, env.visionApiKey, env.geminiApiKey]);
-
-  const translateMedicines = async () => {
-    try {
-      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
-      
-      // Check for API key in both config and environment variables
-      const hasApiKey = config?.apiKeys?.googleCloud?.translationApiKey || process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;
-      console.log("1hasApiKey", hasApiKey)
-      console.log("1env.translationApiKey", env.translationApiKey)
-      console.log("process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY;", process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY)
-      
-      if (!hasApiKey) {
-        setTranslationError('Please configure Google Cloud API key in settings or set it in environment variables');
-        setTranslatedMedicines(medicines);
-        return;
-      }
-
-      setTranslationError(null);
-      const translated = await Promise.all(
-        medicines.map(async (medicine) => {
-          try {
-            return {
-              ...medicine,
-              name: await translateText(medicine.name, currentLanguage, config),
-              dosage: await translateText(medicine.dosage, currentLanguage, config),
-              duration: await translateText(medicine.duration, currentLanguage, config),
-              specialInstructions: medicine.specialInstructions 
-                ? await translateText(medicine.specialInstructions, currentLanguage, config)
-                : undefined
-            };
-          } catch (error) {
-            console.error(`Failed to translate medicine ${medicine.name}:`, error);
-            // Return original medicine if translation fails
-            return medicine;
-          }
-        })
-      );
-      setTranslatedMedicines(translated);
-    } catch (error) {
-      console.error('Translation error:', error);
-      setTranslationError('Failed to translate medicines. Please check your API configuration.');
-      setTranslatedMedicines(medicines);
-    }
-  };
+  }, [currentLanguage, env.translationApiKey, env.visionApiKey, env.geminiApiKey]);
 
   const handleUploadComplete = (data: PrescriptionData) => {
+    //console.log('handleUploadComplete called with data:', data);
+    
     if (onUploadComplete) {
+      console.log('Calling onUploadComplete with data:', data);
       onUploadComplete(data);
     }
     setShowUploader(false);
+    
+    // Print the raw OCR text to the console
+    console.log('OCR Extracted Data:', data);
+    setOcrRawText(JSON.stringify(data, null, 2));
+    
+    // Update medicines state with the new data
+    if (data.medicines && data.medicines.length > 0) {
+      console.log('Processing medicines:', data.medicines);
+      
+      // Add frequency information to each medicine
+      const updatedMedicines = data.medicines.map(medicine => {
+        //console.log('Processing medicine:', medicine);
+        
+        // Parse frequency from special instructions
+        const parseFrequency = (instructions: string | undefined) => {
+          if (!instructions) return { morning: false, afternoon: false, evening: false, night: false };
+          
+          const lowerInstructions = instructions.toLowerCase();
+          const frequency = {
+            morning: false,
+            afternoon: false,
+            evening: false,
+            night: false
+          };
+          
+          // Check for time indicators
+          if (lowerInstructions.includes('morning') || lowerInstructions.includes('am')) {
+            frequency.morning = true;
+          }
+          if (lowerInstructions.includes('afternoon') || lowerInstructions.includes('noon')) {
+            frequency.afternoon = true;
+          }
+          if (lowerInstructions.includes('evening') || lowerInstructions.includes('pm')) {
+            frequency.evening = true;
+          }
+          if (lowerInstructions.includes('night') || lowerInstructions.includes('bedtime')) {
+            frequency.night = true;
+          }
+          
+          // If no specific times mentioned, assume all times
+          if (!frequency.morning && !frequency.afternoon && !frequency.evening && !frequency.night) {
+            frequency.morning = true;
+            frequency.afternoon = true;
+            frequency.evening = true;
+            frequency.night = true;
+          }
+          
+          return frequency;
+        };
+        
+        const frequency = parseFrequency(medicine.specialInstructions);
+        //console.log('Parsed frequency from instructions:', frequency);
+        
+        return {
+          ...medicine,
+          frequency
+        };
+      });
+      
+      
+      // Update both the medicines prop (through onUploadComplete) and local medicines state
+      if (onUploadComplete) {
+        onUploadComplete({ ...data, medicines: updatedMedicines });
+      }
+      setMedicines(updatedMedicines);
+      setOcrError(null);
+    } else {
+      console.log('No medicines found in prescription data');
+      setOcrError('Sorry, we were not able to read the prescription. Please try a clearer image.');
+    }
   };
 
   const handleSaveSettings = (config: AppConfig) => {
@@ -637,6 +712,21 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
         </UploadButton>
       )}
 
+      {/* Show OCR error if present */}
+      {ocrError && (
+        <div className="mt-2 p-2 bg-red-50 text-red-600 rounded-md text-sm">
+          {ocrError}
+        </div>
+      )}
+
+      {/* Show OCR extracted text if present
+      {ocrRawText && (
+        <div className="mt-2 p-2 bg-gray-100 text-gray-800 rounded-md text-sm">
+          <strong>OCR Extracted Text:</strong>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{ocrRawText}</pre>
+        </div>
+      )} */}
+
       {medicines.length > 0 && (
         <ScheduleContainer>
           <ScheduleHeader>
@@ -672,7 +762,7 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines, onUpload
                   ...slot,
                   label: translatedLabels[slot.id as keyof typeof translatedLabels]
                 }}
-                medicines={translatedMedicines.filter(medicine => medicine.frequency[slot.id])}
+                medicines={medicines.filter(medicine => medicine.frequency[slot.id])}
                 selectedMedicine={selectedMedicine}
                 onMedicineClick={handleMedicineClick}
               />

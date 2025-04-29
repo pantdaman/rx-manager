@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Prescription Buddy",
+  title: "PrescriptAI-Prescription Companion",
   description: "Your Digital Medicine Manager",
 };
 

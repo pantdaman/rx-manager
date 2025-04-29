@@ -25,14 +25,14 @@ const AppHeader = ({ onOpenSettings }: { onOpenSettings: () => void }) => (
           <span className="text-sm text-blue-800 ml-[52px]">Your Prescription Companion</span>
         </div>
         
-        <button
+        {/* <button
           onClick={onOpenSettings}
           className="flex items-center gap-2 px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-all duration-200 border border-gray-200 hover:border-gray-300"
           aria-label="Settings"
         >
           <Settings className="w-5 h-5 text-gray-500" />
           <span className="text-sm font-medium">Settings</span>
-        </button>
+        </button> */}
       </div>
     </div>
   </header>

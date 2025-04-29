@@ -8,6 +8,11 @@ from .api.drugs import router as drugs_router
 from .api.pdf import router as pdf_router
 from dotenv import load_dotenv
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -18,9 +23,10 @@ app = FastAPI(title="RX Manager Demo")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8002",
-        "https://rx-manager-frontend-193388977136.us-central1.run.app"
+        "http://localhost:3000",  # Local development
+        "https://prescriptai.in",  # Custom domain
+        "https://*.prescriptai.in",  # Any subdomain
+        "https://rx-manager-frontend-193388977136.us-central1.run.app"  # Google Cloud URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,32 +50,36 @@ async def analyze_prescription_image(
     2. Analyze text using Gemini Pro
     """
     try:
+        logger.info("Received prescription analysis request")
+        logger.info(f"OCR Provider: {ocrProvider}")
+        logger.info(f"API Key provided: {apiKey is not None}")
+        
         # Read and encode file
         file_data = await file.read()
-        file_base64 = base64.b64encode(file_data).decode('utf-8')
+        logger.info(f"File size: {len(file_data)} bytes")
         
-        # Determine file type
-        is_pdf = file.content_type == 'application/pdf'
+        # Convert to base64
+        image_base64 = base64.b64encode(file_data).decode('utf-8')
+        logger.info("File converted to base64")
         
-        # Use API key from request or fallback to .env
-        api_key = apiKey or os.getenv('NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY')
-        
-        # Extract text using specified OCR provider
-        text = await perform_ocr(
-            file_base64,
-            is_pdf=is_pdf,
+        # Perform OCR
+        logger.info("Starting OCR process")
+        ocr_text = await perform_ocr(
+            image_base64=image_base64,
+            is_pdf=file.filename.lower().endswith('.pdf'),
             ocr_provider=ocrProvider,
-            api_key=api_key
+            api_key=apiKey
         )
+        logger.info(f"OCR completed. Text length: {len(ocr_text)}")
         
-        if not text:
-            raise HTTPException(status_code=400, detail="Could not extract text from file")
-            
-        # Analyze with LLM
-        result = await analyze_prescription(text)
+        # Analyze prescription
+        logger.info("Starting prescription analysis")
+        result = await analyze_prescription(ocr_text)
+        logger.info("Prescription analysis completed")
+        
         return result
-        
     except Exception as e:
+        logger.error(f"Error processing prescription: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
@@ -79,4 +89,4 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Medicine Information API"} 
+    return {"message": "Welcome to RX Manager API"} 

@@ -1,25 +1,32 @@
 steps:
-  # Build the frontend container
+  # Build frontend
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest', '-f', 'frontend.Dockerfile', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:${_TAG}', '-f', 'frontend.Dockerfile', '--build-arg', 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app', '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY}', '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY}', '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}', '.']
+    env:
+      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app'
+      - 'NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY}'
+      - 'NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY}'
+      - 'NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}'
+      - 'NODE_ENV=production'
     id: 'build-frontend'
 
-  # Build the backend container
+  # Build backend
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest', '-f', 'backend/Dockerfile', 'backend']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:${_TAG}', '-f', 'Dockerfile', '.']
+    dir: 'backend'
     id: 'build-backend'
 
-  # Push the frontend container
+  # Push frontend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest']
-    waitFor: ['build-frontend']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:${_TAG}']
+    id: 'push-frontend'
 
-  # Push the backend container
+  # Push backend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest']
-    waitFor: ['build-backend']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:${_TAG}']
+    id: 'push-backend'
 
-  # Deploy the frontend to Cloud Run
+  # Deploy frontend
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -27,17 +34,19 @@ steps:
       - 'deploy'
       - 'rx-manager-frontend'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:${_TAG}'
       - '--region'
       - 'us-central1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app,NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID=rx-manager-456615,NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}'
-    waitFor: ['build-frontend']
+      - 'NEXT_PUBLIC_API_URL=https://rx-manager-backend-193388977136.us-central1.run.app,NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+    id: 'deploy-frontend'
 
-  # Deploy the backend to Cloud Run
+  # Deploy backend
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -45,16 +54,24 @@ steps:
       - 'deploy'
       - 'rx-manager-backend'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:${_TAG}'
       - '--region'
       - 'us-central1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
       - '--set-env-vars'
       - 'NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY=${_TRANSLATION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY=${_VISION_API_KEY},NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY=${_GEMINI_API_KEY}'
-    waitFor: ['build-backend']
+    id: 'deploy-backend'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:latest'
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:latest' 
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-frontend:${_TAG}'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/rx-manager/rx-manager-backend:${_TAG}'
+
+substitutions:
+  _TRANSLATION_API_KEY: ''
+  _VISION_API_KEY: ''
+  _GEMINI_API_KEY: ''
+  _TAG: 'latest' 

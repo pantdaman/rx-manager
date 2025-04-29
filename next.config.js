@@ -22,6 +22,14 @@ const nextConfig = {
         })
       );
     }
+    // if (!isServer) {
+    //   console.log('Environment variables status:', {
+    //     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ? 'Set' : 'Not set',
+    //     NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY ? 'Set' : 'Not set',
+    //     NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY ? 'Set' : 'Not set',
+    //     NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY ? 'Set' : 'Not set'
+    //   });
+    // }
     return config;
   },
   images: {
@@ -39,12 +47,5 @@ const nextConfig = {
   },
   output: 'standalone',
 };
-
-// Log environment variable status (without values for security)
-console.log('Environment variables status:', {
-  NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_TRANSLATION_API_KEY ? 'Set' : 'Not set',
-  NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY ? 'Set' : 'Not set',
-  NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_CLOUD_GEMINI_API_KEY ? 'Set' : 'Not set'
-});
 
 module.exports = nextConfig; 

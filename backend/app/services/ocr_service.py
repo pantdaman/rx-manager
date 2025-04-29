@@ -45,12 +45,6 @@ async def perform_ocr(image_base64: str, is_pdf: bool = False, ocr_provider: str
     try:
         print(f"Performing OCR with provider: {ocr_provider}")
         
-        # Log API key sources
-        print("API Key Sources:", {
-            "from_request": api_key or "Not provided",
-            "from_env": os.getenv('NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY') or "Not set",
-            "using": "Request" if api_key else "Environment"
-        })
         
         # Use API key from request or fallback to .env
         final_api_key = api_key or os.getenv('NEXT_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY')
@@ -58,7 +52,7 @@ async def perform_ocr(image_base64: str, is_pdf: bool = False, ocr_provider: str
             raise Exception("No API key found in request or environment variables")
             
         print(f"Using API Key: {'Configured' if final_api_key else 'Not found'}")
-        
+        print(f"Final API Key: {final_api_key}")
         # Decode the base64 data
         content = base64.b64decode(image_base64)
         
