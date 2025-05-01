@@ -394,7 +394,7 @@ const DisclaimerText = styled.span`
   color:rgb(8, 11, 16);
   margin-left: 0.5rem;
   font-style: italic;
-  background-color:rgb(235, 218, 137);
+  background-color:rgb(223, 233, 84);
 `;
 
 interface MedicineActionsProps {
@@ -933,16 +933,6 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
 
   const renderStores = () => {
     if (loadingStores) {
-      return <LoadingSpinner>{translatedStoreLabels.searchingStores}</LoadingSpinner>;
-    }
-
-    if (storeError) {
-      return <ErrorMessage>{storeError}</ErrorMessage>;
-    }
-
-    const storesToDisplay = translatedStores.length > 0 ? translatedStores : stores;
-
-    if (!storesToDisplay.length) {
       return (
         <div className="space-y-4">
           <SearchInput
@@ -951,17 +941,12 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
             value={pinCode}
             onChange={(e) => setPinCode(e.target.value)}
           />
-          <div className="text-center text-gray-500 p-4">
-            {translatedStoreLabels.noStoresFound}
-          </div>
+          <LoadingSpinner>{translatedStoreLabels.searchingStores}</LoadingSpinner>
         </div>
       );
     }
 
-    const startIndex = (currentStorePage - 1) * storesPerPage;
-    const endIndex = startIndex + storesPerPage;
-    const currentStores = storesToDisplay.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(storesToDisplay.length / storesPerPage);
+    const storesToDisplay = translatedStores.length > 0 ? translatedStores : stores;
 
     return (
       <div className="space-y-4">
@@ -972,57 +957,72 @@ const MedicineActions: React.FC<MedicineActionsProps> = ({
           onChange={(e) => setPinCode(e.target.value)}
         />
         
-        {currentStores.map((store, index) => (
-          <StoreCard key={index}>
-            <StoreName>
-              {store.storeName}
-              <span className="text-sm text-gray-600 ml-2">
-                (Store Code: {store.storeNo})
-              </span>
-            </StoreName>
-            <StoreInfo>
-              <div>{store.address}</div>
-              <div>Distance: {store.distanceFromUser} km</div>
-              <div>Contact: {store.mobileNo}</div>
-              {store.emailId && <div>Email: {store.emailId}</div>}
-              <div className="mt-2">
-                <a
-                  href={`https://www.google.com/maps?q=${store.storeLatitude},${store.storeLongitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm"
-                >
-                  {translatedStoreLabels.viewOnMaps}
-                </a>
-              </div>
-            </StoreInfo>
-          </StoreCard>
-        ))}
-
-        {storesToDisplay.length > storesPerPage && (
-          <PaginationContainer>
-            <PageButton
-              onClick={() => setCurrentStorePage(prev => Math.max(prev - 1, 1))}
-              disabled={currentStorePage === 1}
-            >
-              {translatedStoreLabels.previous}
-            </PageButton>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <PageButton
-                key={page}
-                $isActive={currentStorePage === page}
-                onClick={() => setCurrentStorePage(page)}
-              >
-                {page}
-              </PageButton>
+        {storeError && <ErrorMessage>{storeError}</ErrorMessage>}
+        
+        {!storesToDisplay.length && !storeError && (
+          <div className="text-center text-gray-500 p-4">
+            {translatedStoreLabels.noStoresFound}
+          </div>
+        )}
+        
+        {storesToDisplay.length > 0 && (
+          <>
+            {storesToDisplay.slice(
+              (currentStorePage - 1) * storesPerPage,
+              currentStorePage * storesPerPage
+            ).map((store, index) => (
+              <StoreCard key={index}>
+                <StoreName>
+                  {store.storeName}
+                  <span className="text-sm text-gray-600 ml-2">
+                    (Store Code: {store.storeNo})
+                  </span>
+                </StoreName>
+                <StoreInfo>
+                  <div>{store.address}</div>
+                  <div>Distance: {store.distanceFromUser} km</div>
+                  <div>Contact: {store.mobileNo}</div>
+                  {store.emailId && <div>Email: {store.emailId}</div>}
+                  <div className="mt-2">
+                    <a
+                      href={`https://www.google.com/maps?q=${store.storeLatitude},${store.storeLongitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      {translatedStoreLabels.viewOnMaps}
+                    </a>
+                  </div>
+                </StoreInfo>
+              </StoreCard>
             ))}
-            <PageButton
-              onClick={() => setCurrentStorePage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentStorePage === totalPages}
-            >
-              {translatedStoreLabels.next}
-            </PageButton>
-          </PaginationContainer>
+
+            {storesToDisplay.length > storesPerPage && (
+              <PaginationContainer>
+                <PageButton
+                  onClick={() => setCurrentStorePage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentStorePage === 1}
+                >
+                  {translatedStoreLabels.previous}
+                </PageButton>
+                {Array.from({ length: Math.ceil(storesToDisplay.length / storesPerPage) }, (_, i) => i + 1).map(page => (
+                  <PageButton
+                    key={page}
+                    $isActive={currentStorePage === page}
+                    onClick={() => setCurrentStorePage(page)}
+                  >
+                    {page}
+                  </PageButton>
+                ))}
+                <PageButton
+                  onClick={() => setCurrentStorePage(prev => Math.min(prev + 1, Math.ceil(storesToDisplay.length / storesPerPage)))}
+                  disabled={currentStorePage === Math.ceil(storesToDisplay.length / storesPerPage)}
+                >
+                  {translatedStoreLabels.next}
+                </PageButton>
+              </PaginationContainer>
+            )}
+          </>
         )}
       </div>
     );

@@ -9,13 +9,13 @@ interface TranslationResponse {
   };
 }
 
-export async function translateText(text: string | undefined, targetLanguage: string, config: AppConfig): Promise<string> {
+export async function translateText(text: string | undefined, targetLanguage: string, config: AppConfig, sourceLanguage: string = 'en'): Promise<string> {
 
   if (!text || text.trim() === '') {
     return '';
   }
 
-  if (targetLanguage.toLowerCase() === 'en') {
+  if (targetLanguage.toLowerCase() === sourceLanguage.toLowerCase()) {
     return text;
   }
 
@@ -27,6 +27,14 @@ export async function translateText(text: string | undefined, targetLanguage: st
   }
 
   try {
+    // Build request body, omitting 'source' if sourceLanguage is 'auto'
+    const body: any = {
+      q: text.trim(),
+      target: targetLanguage,
+    };
+    if (sourceLanguage !== 'auto') {
+      body.source = sourceLanguage;
+    }
     const response = await fetch(
       `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`,
       {
@@ -34,19 +42,15 @@ export async function translateText(text: string | undefined, targetLanguage: st
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          q: text.trim(),
-          source: 'en',
-          target: targetLanguage,
-        }),
+        body: JSON.stringify(body),
       }
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('Translation API error details:', errorData);
+      const errorText = await response.text();
+      console.error('Translation API error details:', errorText);
       throw new Error(
-        `Translation API error: ${response.statusText}${errorData?.error?.message ? ` - ${errorData.error.message}` : ''}`
+        `Translation API error: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`
       );
     }
 

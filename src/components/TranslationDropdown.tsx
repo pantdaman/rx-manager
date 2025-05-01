@@ -6,18 +6,23 @@ const DropdownContainer = styled.div`
   display: inline-block;
 `;
 
-const LanguageButton = styled.button`
+const DropdownButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: white;
   border: 1px solid #e5e7eb;
   border-radius: 0.375rem;
-  background: white;
   font-size: 0.875rem;
   color: #374151;
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 120px;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   &:hover {
     background: #f9fafb;
@@ -26,39 +31,49 @@ const LanguageButton = styled.button`
   svg {
     width: 16px;
     height: 16px;
+    color: #6b7280;
   }
 `;
 
-const DropdownMenu = styled.div<{ $isOpen: boolean }>`
+const DropdownMenu = styled.div`
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 0.25rem;
-  display: ${props => props.$isOpen ? 'block' : 'none'};
+  margin-top: 0.5rem;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 0.375rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   z-index: 50;
-  min-width: 160px;
+  min-width: 120px;
+  max-width: 150px;
 `;
 
-const LanguageOption = styled.button`
-  display: block;
+const DropdownItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   width: 100%;
-  padding: 0.5rem 1rem;
   text-align: left;
+  background: none;
+  border: none;
   font-size: 0.875rem;
   color: #374151;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   &:hover {
     background: #f9fafb;
   }
 
-  &:not(:last-child) {
-    border-bottom: 1px solid #e5e7eb;
+  svg {
+    width: 16px;
+    height: 16px;
+    color: #6b7280;
   }
 `;
 
@@ -135,7 +150,7 @@ const TranslationDropdown: React.FC<TranslationDropdownProps> = ({
 
   return (
     <DropdownContainer className={className}>
-      <LanguageButton onClick={() => setIsOpen(!isOpen)} disabled={isLoading}>
+      <DropdownButton onClick={() => setIsOpen(!isOpen)} disabled={isLoading}>
         {isLoading ? (
           <LoadingSpinner />
         ) : (
@@ -146,17 +161,19 @@ const TranslationDropdown: React.FC<TranslationDropdownProps> = ({
             {currentLanguageName}
           </>
         )}
-      </LanguageButton>
-      <DropdownMenu $isOpen={isOpen}>
-        {LANGUAGES.map((language) => (
-          <LanguageOption
-            key={language.code}
-            onClick={() => handleLanguageSelect(language.code)}
-          >
-            {language.name}
-          </LanguageOption>
-        ))}
-      </DropdownMenu>
+      </DropdownButton>
+      {isOpen && (
+        <DropdownMenu>
+          {LANGUAGES.map((language) => (
+            <DropdownItem
+              key={language.code}
+              onClick={() => handleLanguageSelect(language.code)}
+            >
+              {language.name}
+            </DropdownItem>
+          ))}
+        </DropdownMenu>
+      )}
     </DropdownContainer>
   );
 };

@@ -110,6 +110,12 @@ const ScheduleHeader = styled.div`
   padding: 1.5rem;
   background: linear-gradient(to right, #f3f4f6, #ffffff);
   border-bottom: 1px solid #e5e7eb;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
 `;
 
 const HeadingContainer = styled.div`
@@ -124,6 +130,12 @@ const TitleRow = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 `;
 
 const DisclaimerText = styled.span`
@@ -136,6 +148,14 @@ const DisclaimerText = styled.span`
   border-radius: 0.375rem;
   border: 1px solid #e5e7eb;
   font-weight: 500;
+  white-space: normal;
+  word-wrap: break-word;
+  max-width: 100%;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    text-align: left;
+  }
 `;
 
 const Title = styled.h2`
@@ -158,17 +178,28 @@ const Subtitle = styled.div`
 
 const TimeSlotGrid = styled.div`
   display: flex;
+  flex-direction: column;
   border-top: 1px solid #e5e7eb;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
 `;
 
 const TimeSlotContainer = styled.div<{ theme: TimeSlot['theme'] }>`
   flex: 1;
   background: ${(props: { theme: TimeSlot['theme'] }) => props.theme.primary};
-  border-right: 1px solid #e5e7eb;
+  border-right: none;
+  border-bottom: 1px solid #e5e7eb;
   padding: 0.5rem;
   
-  &:last-child {
-    border-right: none;
+  @media (min-width: 768px) {
+    border-right: 1px solid #e5e7eb;
+    border-bottom: none;
+    
+    &:last-child {
+      border-right: none;
+    }
   }
 `;
 
@@ -354,9 +385,16 @@ const TimeSlotSection: React.FC<{
   selectedMedicine: Medicine | null;
   onMedicineClick: (medicine: Medicine) => void;
 }> = React.memo(({ slot, medicines, selectedMedicine, onMedicineClick }) => {
-  // Only log when medicines actually change
+  // Add logging for debugging
+  console.log(`TimeSlotSection ${slot.id}:`, {
+    allMedicines: medicines,
+    slotId: slot.id,
+  });
+  
   const filteredMedicines = React.useMemo(() => {
-    return medicines.filter(medicine => medicine.frequency[slot.id]);
+    const filtered = medicines.filter(medicine => medicine.frequency[slot.id]);
+    console.log(`Filtered medicines for ${slot.id}:`, filtered);
+    return filtered;
   }, [medicines, slot.id]);
   
   const getTimeSlotIcon = (id: string) => {
@@ -435,8 +473,47 @@ const SettingsButton = styled.button`
 const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: 0.5rem;
+  }
 `;
+
+// Fallback frequency parser
+const parseFrequency = (instructions: string | undefined) => {
+  if (!instructions) return { morning: false, afternoon: false, evening: false, night: false };
+  const lowerInstructions = instructions.toLowerCase();
+  const frequency = {
+    morning: false,
+    afternoon: false,
+    evening: false,
+    night: false
+  };
+  if (lowerInstructions.includes('morning') || lowerInstructions.includes('am')) {
+    frequency.morning = true;
+  }
+  if (lowerInstructions.includes('afternoon') || lowerInstructions.includes('noon')) {
+    frequency.afternoon = true;
+  }
+  if (lowerInstructions.includes('evening') || lowerInstructions.includes('pm')) {
+    frequency.evening = true;
+  }
+  if (lowerInstructions.includes('night') || lowerInstructions.includes('bedtime')) {
+    frequency.night = true;
+  }
+  // If no specific times mentioned, assume all times
+  if (!frequency.morning && !frequency.afternoon && !frequency.evening && !frequency.night) {
+    frequency.morning = true;
+    frequency.afternoon = true;
+    frequency.evening = true;
+    frequency.night = true;
+  }
+  return frequency;
+};
 
 const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines: initialMedicines, onUploadComplete }) => {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
@@ -585,79 +662,48 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines: initialM
     translateLabels();
   }, [currentLanguage, env.translationApiKey, env.visionApiKey, env.geminiApiKey]);
 
-  const handleUploadComplete = (data: PrescriptionData) => {
-    //console.log('handleUploadComplete called with data:', data);
-    
+  const handleUploadComplete = async (data: PrescriptionData) => {
+    console.log('handleUploadComplete called with data:', data);
     if (onUploadComplete) {
       console.log('Calling onUploadComplete with data:', data);
       onUploadComplete(data);
     }
     setShowUploader(false);
-    
-    // Print the raw OCR text to the console
     console.log('OCR Extracted Data:', data);
     setOcrRawText(JSON.stringify(data, null, 2));
-    
-    // Update medicines state with the new data
     if (data.medicines && data.medicines.length > 0) {
       console.log('Processing medicines:', data.medicines);
-      
-      // Add frequency information to each medicine
-      const updatedMedicines = data.medicines.map(medicine => {
-        //console.log('Processing medicine:', medicine);
-        
-        // Parse frequency from special instructions
-        const parseFrequency = (instructions: string | undefined) => {
-          if (!instructions) return { morning: false, afternoon: false, evening: false, night: false };
-          
-          const lowerInstructions = instructions.toLowerCase();
-          const frequency = {
-            morning: false,
-            afternoon: false,
-            evening: false,
-            night: false
-          };
-          
-          // Check for time indicators
-          if (lowerInstructions.includes('morning') || lowerInstructions.includes('am')) {
-            frequency.morning = true;
-          }
-          if (lowerInstructions.includes('afternoon') || lowerInstructions.includes('noon')) {
-            frequency.afternoon = true;
-          }
-          if (lowerInstructions.includes('evening') || lowerInstructions.includes('pm')) {
-            frequency.evening = true;
-          }
-          if (lowerInstructions.includes('night') || lowerInstructions.includes('bedtime')) {
-            frequency.night = true;
-          }
-          
-          // If no specific times mentioned, assume all times
-          if (!frequency.morning && !frequency.afternoon && !frequency.evening && !frequency.night) {
-            frequency.morning = true;
-            frequency.afternoon = true;
-            frequency.evening = true;
-            frequency.night = true;
-          }
-          
-          return frequency;
-        };
-        
-        const frequency = parseFrequency(medicine.specialInstructions);
-        //console.log('Parsed frequency from instructions:', frequency);
-        
+      // Fallback: If frequency is missing or all false, use parseFrequency
+      let updatedMedicines = data.medicines.map(medicine => {
+        let freq = medicine.frequency;
+        if (!freq || !Object.values(freq).some(Boolean)) {
+          freq = parseFrequency(medicine.specialInstructions);
+        }
         return {
           ...medicine,
-          frequency
+          frequency: freq
         };
       });
-      
-      
-      // Update both the medicines prop (through onUploadComplete) and local medicines state
-      if (onUploadComplete) {
-        onUploadComplete({ ...data, medicines: updatedMedicines });
-      }
+
+      // Auto-translate non-English medicine names to English
+      const config = JSON.parse(localStorage.getItem('rx-manager-config') || '{"apiKeys":{"googleCloud":{},"openai":{},"anthropic":{}}}');
+      updatedMedicines = await Promise.all(updatedMedicines.map(async (medicine) => {
+        // Only translate if name is not empty and not English letters only
+        if (medicine.name && /[^A-Za-z0-9\s]/.test(medicine.name)) {
+          try {
+            const translatedName = await translateText(medicine.name, 'en', config, 'auto'); // use auto-detect
+            if (translatedName && translatedName !== medicine.name) {
+              return { ...medicine, name: translatedName };
+            }
+          } catch (e) {
+            console.warn('Auto-translation to English failed for', medicine.name, e);
+          }
+        }
+        return medicine;
+      }));
+
       setMedicines(updatedMedicines);
+      setOriginalMedicines(updatedMedicines);
       setOcrError(null);
     } else {
       console.log('No medicines found in prescription data');
@@ -768,6 +814,22 @@ const MedicineSchedule: React.FC<MedicineScheduleProps> = ({ medicines: initialM
               />
             ))}
           </TimeSlotGrid>
+          {/* Unscheduled medicines */}
+          {medicines.filter(m => !Object.values(m.frequency).some(Boolean)).length > 0 && (
+            <div className="mt-6 p-4 bg-grey-600 border border-orange-300 rounded">
+              <h3 className="font-semibold text-red-800 mb-2">Unscheduled Medicines</h3>
+              <ul className="list-disc pl-6">
+                {medicines.filter(m => !Object.values(m.frequency).some(Boolean)).map((m, idx) => (
+                  <li key={m.name + idx} className="text-red-600 mb-2">
+                    <div className="font-semibold">{m.name}</div>
+                    <div className="text-sm font-medium bg-orange-200 text-orange-900 rounded px-2 py-1 mt-1 inline-block">
+                      No schedule could be determined for this medicine.
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </ScheduleContainer>
       )}
 

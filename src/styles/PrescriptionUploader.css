@@ -1,0 +1,113 @@
+.prescription-uploader {
+  width: 100%;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.upload-options {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.file-upload {
+  flex: 1;
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-button,
+.camera-button {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.upload-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.upload-button:hover {
+  background-color: #2563eb;
+}
+
+.upload-button:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
+.camera-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+}
+
+.camera-button:hover {
+  background-color: #059669;
+}
+
+.camera-button:disabled {
+  background-color: #6ee7b7;
+  cursor: not-allowed;
+}
+
+.camera-container {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.camera-feed {
+  width: 100%;
+  border-radius: 0.5rem;
+  background: #000;
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+}
+
+.capture-button,
+.cancel-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.capture-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+}
+
+.cancel-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+}
+
+.error-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+} 
